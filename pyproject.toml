@@ -1,0 +1,48 @@
+[project]
+name = "math-rl"
+version = "0.1.0"
+description = "RL post-training experiments for language models on math problems"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "datasets>=5.0,<6",
+    "pyyaml>=6.0,<7",
+    "torch>=2.13,<2.14",
+    "transformers>=5.14,<6",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3,<3",
+    "pytest>=9.1,<10",
+    "pytest-cov>=7.0,<8",
+    "ruff>=0.16,<0.17",
+]
+train = [
+    "accelerate>=1.14,<2",
+    "peft>=0.19,<0.20",
+    "trl>=1.9,<2",
+    "wandb>=0.28,<0.29",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+warn_unused_ignores = true
