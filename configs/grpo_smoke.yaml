@@ -1,0 +1,52 @@
+experiment:
+  name: qwen2.5-1.5b-grpo-gsm8k-smoke
+  seed: 42
+
+model:
+  name_or_path: Qwen/Qwen2.5-1.5B-Instruct
+  dtype: auto
+  trust_remote_code: false
+
+dataset:
+  name: openai/gsm8k
+  subset: main
+  train_split: train
+  test_split: test
+  validation_size: 512
+
+prompt:
+  system: >-
+    Solve the problem step by step. Put the final numeric answer after ####.
+  answer_delimiter: "####"
+
+generation:
+  backend: transformers
+  max_new_tokens: 256
+  num_return_sequences: 4
+  temperature: 0.8
+  top_p: 0.95
+  seed: 42
+  stop: []
+
+training:
+  algorithm: grpo
+  output_dir: outputs/qwen2.5-1.5b-grpo-gsm8k-smoke
+  max_steps: 10
+  learning_rate: 1.0e-6
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  gradient_checkpointing: true
+  max_completion_length: 256
+  num_generations: 4
+  logging_steps: 1
+  save_strategy: "no"
+  use_vllm: false
+
+evaluation:
+  per_device_eval_batch_size: 4
+  num_samples: 128
+
+tracking:
+  report_to: wandb
+  log_completions: true
+
