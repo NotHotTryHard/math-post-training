@@ -536,7 +536,7 @@ wheels = [
 ]
 
 [[package]]
-name = "math-rl"
+name = "math-post-training"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

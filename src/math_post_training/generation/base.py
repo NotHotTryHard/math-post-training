@@ -1,7 +1,8 @@
 """Shared contract and value objects for text-generation backends."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Protocol
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,4 +35,3 @@ class GenerationBackend(Protocol):
     ) -> list[GenerationOutput]:
         """Generate completions while preserving the order of input prompts."""
         ...
-
