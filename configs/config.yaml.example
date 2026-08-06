@@ -23,10 +23,10 @@ generation:
   backend: transformers
   max_new_tokens: 256
   num_return_sequences: 4
+  do_sample: true
   temperature: 0.8
   top_p: 0.95
   seed: 42
-  stop: []
 
 training:
   algorithm: grpo
@@ -49,4 +49,3 @@ evaluation:
 tracking:
   report_to: wandb
   log_completions: true
-

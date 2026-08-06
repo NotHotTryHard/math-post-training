@@ -7,7 +7,7 @@ generation:
   backend: transformers
   max_new_tokens: 256
   num_return_sequences: 1
-  temperature: 0.8
+  do_sample: false
+  temperature: 0.0
   top_p: 0.95
   seed: 42
-  stop: []
