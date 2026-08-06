@@ -1,14 +1,24 @@
 """Shared loading of causal language models and their tokenizers."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any, Protocol, cast
 
 import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    PreTrainedModel,
     PreTrainedTokenizerBase,
 )
+
+
+class CausalLanguageModel(Protocol):
+    """Operations used from an auto-loaded causal language model."""
+
+    def eval(self) -> CausalLanguageModel: ...
+
+    def generate(self, *args: Any, **kwargs: Any) -> torch.Tensor: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +34,7 @@ def load_model_and_tokenizer(
     config: ModelLoadConfig,
     *,
     device: str | torch.device | None = None,
-) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
+) -> tuple[CausalLanguageModel, PreTrainedTokenizerBase]:
     """Load a Hugging Face model ID or a local ``save_pretrained`` checkpoint."""
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -42,4 +52,4 @@ def load_model_and_tokenizer(
     if device is not None:
         torch.nn.Module.to(model, device=device)
 
-    return model, tokenizer
+    return cast(CausalLanguageModel, model), tokenizer
