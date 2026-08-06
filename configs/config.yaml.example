@@ -1,5 +1,5 @@
 experiment:
-  name: qwen2.5-1.5b-grpo-gsm8k-smoke
+  name: qwen2.5-1.5b-grpo-openmath2-2024-smoke
   seed: 42
 
 model:
@@ -8,11 +8,15 @@ model:
   trust_remote_code: false
 
 dataset:
-  name: openai/gsm8k
-  subset: main
-  train_split: train
-  test_split: test
-  validation_size: 512
+  adapter: open_math_instruct_2
+  path: nvidia/OpenMathInstruct-2
+  subset: null
+  revision: 469216e3f46f4dacf476b382e192485ea51a143e
+  split: train_1M
+  streaming: true
+  shuffle_seed: 42
+  shuffle_buffer_size: 10_000
+  limit: 1_000
 
 prompt:
   system: >-
@@ -30,7 +34,7 @@ generation:
 
 training:
   algorithm: grpo
-  output_dir: outputs/qwen2.5-1.5b-grpo-gsm8k-smoke
+  output_dir: outputs/qwen2.5-1.5b-grpo-openmath2-2024-smoke
   max_steps: 10
   learning_rate: 1.0e-6
   per_device_train_batch_size: 1
