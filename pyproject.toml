@@ -11,6 +11,9 @@ dependencies = [
     "transformers>=5.14,<6",
 ]
 
+[project.scripts]
+model-generate = "math_post_training.generation.transformers:main"
+
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12"]
 build-backend = "uv_build"
@@ -21,6 +24,7 @@ dev = [
     "pytest>=9.1,<10",
     "pytest-cov>=7.0,<8",
     "ruff>=0.16,<0.17",
+    "types-pyyaml>=6.0.12",
 ]
 train = [
     "accelerate>=1.14,<2",
