@@ -1,6 +1,6 @@
 """Load and normalize mathematical datasets."""
 
-from datasets import load_dataset
+from datasets import interleave_datasets, load_dataset
 
 from math_post_training.data.sources import gsm8k, open_math_instruct_2
 
@@ -11,7 +11,26 @@ NORMALIZERS = {
 
 
 def load_math_dataset(config):
-    """Load one dataset described by the experiment's ``dataset`` section."""
+    """Load and optionally mix the experiment's dataset sources."""
+
+    sources = config["sources"]
+    datasets = [_load_source(source) for source in sources]
+
+    if len(datasets) == 1:
+        return datasets[0]
+
+    probabilities = [source["probability"] for source in sources]
+
+    return interleave_datasets(
+        datasets,
+        probabilities=probabilities,
+        seed=config["seed"],
+        stopping_strategy=config["stopping_strategy"],
+    )
+
+
+def _load_source(config):
+    """Load and normalize one source before it is used alone or in a mixture."""
 
     normalizer = NORMALIZERS[config["adapter"]]
     streaming = config.get("streaming", False)

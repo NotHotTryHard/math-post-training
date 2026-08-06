@@ -1,5 +1,7 @@
 import pytest
+from datasets import IterableDataset
 
+from math_post_training.data import loaders
 from math_post_training.data.preprocessing import to_grpo_example, to_sft_example
 from math_post_training.data.sources import gsm8k, open_math_instruct_2
 
@@ -62,3 +64,35 @@ def test_grpo_rejects_an_example_without_reference_answer():
                 "source": "fixture",
             }
         )
+
+
+def test_dataset_sources_can_be_mixed(monkeypatch):
+    source_datasets = {
+        "a": IterableDataset.from_generator(lambda: iter([{"value": "a1"}, {"value": "a2"}])),
+        "b": IterableDataset.from_generator(lambda: iter([{"value": "b1"}, {"value": "b2"}])),
+    }
+    monkeypatch.setattr(loaders, "_load_source", lambda source: source_datasets[source["name"]])
+
+    dataset = loaders.load_math_dataset(
+        {
+            "seed": 42,
+            "stopping_strategy": "first_exhausted",
+            "sources": [
+                {"name": "a", "probability": 0.5},
+                {"name": "b", "probability": 0.5},
+            ],
+        }
+    )
+
+    values = [row["value"] for row in dataset]
+    assert values
+    assert all(value[0] in {"a", "b"} for value in values)
+
+
+def test_one_source_uses_the_same_sources_shape(monkeypatch):
+    source_dataset = IterableDataset.from_generator(lambda: iter([{"value": "only"}]))
+    monkeypatch.setattr(loaders, "_load_source", lambda source: source_dataset)
+
+    dataset = loaders.load_math_dataset({"sources": [{"name": "only"}]})
+
+    assert list(dataset) == [{"value": "only"}]

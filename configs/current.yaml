@@ -1,24 +1,37 @@
+experiment:
+  name: qwen2.5-1.5b-blabla
+  seed: 42
+
 model:
   name_or_path: Qwen/Qwen2.5-1.5B-Instruct
   dtype: auto
   trust_remote_code: false
 
 dataset:
-  adapter: open_math_instruct_2
-  path: nvidia/OpenMathInstruct-2
-  subset: null
-  revision: 469216e3f46f4dacf476b382e192485ea51a143e
-  split: train_1M
-  streaming: true
-  shuffle_seed: 42
-  shuffle_buffer_size: 10_000
-  limit: 1_000
+  seed: 42
+  stopping_strategy: all_exhausted_without_replacement
+  sources:
+    - adapter: gsm8k
+      path: openai/gsm8k
+      subset: main
+      revision: e53f048856ff4f594e959d75785d2c2d37b678ee
+      split: train
+      streaming: true
+      shuffle_seed: 42
+      shuffle_buffer_size: 10_000
+      limit: 100
+      probability: 0.1
+
+prompt:
+  system: >-
+    Solve the problem step by step. Put the final numeric answer after ####.
+  answer_delimiter: "####"
 
 generation:
   backend: transformers
   max_new_tokens: 256
-  num_return_sequences: 1
-  do_sample: false
-  temperature: 0.0
+  num_return_sequences: 4
+  do_sample: true
+  temperature: 0.8
   top_p: 0.95
   seed: 42
