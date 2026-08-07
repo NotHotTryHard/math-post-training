@@ -1,8 +1,10 @@
 """Published Qwen2.5-Math eval prompt protocols.
 
-GSM8K and MATH use the fixed prompts from Appendix B of the technical report.
-MMLU uses five dev examples from the subject currently being evaluated.
+GSM8K, MATH, and MMLU-STEM use the fixed prompts from Appendix B of the
+technical report and the official evaluation harness.
 """
+
+import re
 
 # ruff: noqa: E501 -- line wrapping would change the frozen prompt text
 
@@ -14,14 +16,13 @@ def build_eval_prompt(
     problem,
     benchmark,
     protocol,
-    demonstrations=None,
 ):
     """Return the exact string sent to the model for one benchmark problem."""
 
     if protocol == "qwen2_5_math_instruct":
         user_prompt = problem
         if benchmark == "mmlu_stem":
-            user_prompt = _mmlu_few_shot_prompt(problem, demonstrations)
+            user_prompt = MMLU_INSTRUCT_PREFIX + _mmlu_instruct_target(problem)
         messages = [
             {"role": "system", "content": QWEN_INSTRUCT_SYSTEM},
             {"role": "user", "content": user_prompt},
@@ -47,31 +48,22 @@ def build_eval_prompt(
         if benchmark == "math":
             return MATH_BASE_PREFIX + problem + "\nSolution:"
         if benchmark == "mmlu_stem":
-            return _mmlu_few_shot_prompt(problem, demonstrations)
+            return MMLU_BASE_PREFIX + _mmlu_base_target(problem)
         raise ValueError(f"No Qwen Base prompt is defined for benchmark {benchmark!r}")
 
     raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
 
 
-def get_eval_settings(protocol, benchmark, demonstrations=None):
+def get_eval_settings(protocol, benchmark):
     """Return generation and answer-parsing settings fixed by the protocol."""
 
     if benchmark not in {"gsm8k", "gsm1k", "math", "mmlu_stem"}:
         raise ValueError(f"No evaluation settings are defined for benchmark {benchmark!r}")
 
     answer_kind = "choice" if benchmark == "mmlu_stem" else "math"
-    num_shots = 0
-    if benchmark == "mmlu_stem" and protocol in {
-        "qwen2_5_math_instruct",
-        "qwen2_5_math_base",
-    }:
-        if demonstrations is None:
-            raise ValueError("MMLU-STEM evaluation requires dev demonstrations")
-        num_shots = len(demonstrations)
-
     if protocol == "qwen2_5_math_instruct":
         return {
-            "num_shots": num_shots,
+            "num_shots": 5 if benchmark == "mmlu_stem" else 0,
             "answer_kind": answer_kind,
             "required_answer_format": "boxed" if answer_kind == "math" else None,
             "stop_strings": None,
@@ -84,8 +76,11 @@ def get_eval_settings(protocol, benchmark, demonstrations=None):
         elif benchmark == "math":
             num_shots = 4
             stop_strings = ["Problem:"]
+        elif benchmark == "mmlu_stem":
+            num_shots = 4
+            stop_strings = ["Problem:"]
         else:
-            stop_strings = ["Question:"]
+            raise ValueError(f"No Qwen Base settings are defined for benchmark {benchmark!r}")
         return {
             "num_shots": num_shots,
             "answer_kind": answer_kind,
@@ -124,14 +119,31 @@ def _base_zero_shot_cot_prompt(problem, benchmark):
     return f"Question: {problem}\nLet's think step by step"
 
 
-def _mmlu_few_shot_prompt(problem, demonstrations):
-    if not demonstrations:
-        raise ValueError("MMLU-STEM evaluation requires dev demonstrations")
-    prefix = "".join(
-        f"Question: {example['problem']}\nAnswer: {example['answer']}\n"
-        for example in demonstrations
+def _mmlu_parts(problem):
+    match = re.fullmatch(
+        r"(?s)(?P<question>.+)\nA\. (?P<a>.*?)\nB\. (?P<b>.*?)\nC\. (?P<c>.*?)\nD\. (?P<d>.*)",
+        problem,
     )
-    return prefix + f"Question: {problem}\nAnswer:"
+    if match is None:
+        raise ValueError("MMLU-STEM problem must end with A-D choices")
+    return match.group("question", "a", "b", "c", "d")
+
+
+def _mmlu_base_target(problem):
+    question, option_a, option_b, option_c, option_d = _mmlu_parts(problem)
+    return (
+        f"{question}\n"
+        "What of the following is the right choice? Explain your answer.\n"
+        f"(A) {option_a}\n(B) {option_b}\n(C) {option_c}\n(D) {option_d}\n"
+        "Solution:"
+    )
+
+
+def _mmlu_instruct_target(problem):
+    question, option_a, option_b, option_c, option_d = _mmlu_parts(problem)
+    return (
+        f"{question}\nAnswer Choices: (A) {option_a} (B) {option_b} (C) {option_c} (D) {option_d}"
+    )
 
 
 # Fixed demonstrations from the paper live below the executable prompt logic.
@@ -199,3 +211,69 @@ Solution: If Terrell lifts two 20-pound weights 12 times, he lifts a total of $2
 Problem: If the system of equations $6x-4y=a,$ $6y-9x=b$ has a solution $(x,y)$ where $x$ and $y$ are both nonzero, find $\frac{a}{b},$ assuming $b$ is nonzero.
 Solution: If we multiply the first equation by $-\frac{3}{2}$, we obtain $6y-9x=-\frac{3}{2}a$. Since we also know that $6y-9x=b$, we have $-\frac{3}{2}a=b \Rightarrow \frac{a}{b}=\boxed{-\frac{2}{3}}$. The answer is: $-\frac{2}{3}$.
 Problem: """
+
+MMLU_BASE_PREFIX = r"""Problem:
+Find the domain of the expression $\frac{\sqrt{x-2}}{\sqrt{5-x}}$.
+What of the following is the right choice? Explain your answer.
+(A) [-5,-2)
+(B) [2,5)
+(C) [-2,-5)
+(D) [5,2)
+Solution:
+The expressions inside each square root must be non-negative. Therefore, $x-2 \ge 0$, so $x\ge2$, and $5-x \ge 0$, so $x \le 5$. Also, the denominator cannot be equal to zero, so $5-x>0$, which gives $x<5$.
+Therefore, the domain of the expression is $\boxed{[2,5)}$.
+Final Answer: The final answer is (B). I hope it is correct.
+Problem:
+If $\det \mathbf{A} = 2$ and $\det \mathbf{B} = 12,$ then find $\det (\mathbf{A} \mathbf{B}).$
+What of the following is the right choice? Explain your answer.
+(A) 14
+(B) 4
+(C) 2
+(D) 24
+Solution:
+We have that $\det (\mathbf{A} \mathbf{B}) = (\det \mathbf{A})(\det \mathbf{B}) = (2)(12) = \boxed{24}.$
+Final Answer: The final answer is (D). I hope it is correct.
+Problem:
+Terrell usually lifts two 20-pound weights 12 times. If he uses two 15-pound weights instead, how many times must Terrell lift them in order to lift the same total weight?
+What of the following is the right choice? Explain your answer.
+(A) 12
+(B) 20
+(C) 16
+(D) 15
+Solution:
+If Terrell lifts two 20-pound weights 12 times, he lifts a total of $2\cdot 12\cdot20=480$ pounds of weight. If he lifts two 15-pound weights instead for $n$ times, he will lift a total of $2\cdot15\cdot n=30n$ pounds of weight. Equating this to 480 pounds, we can solve for $n$: $30n=480 \Rightarrow n=480/30=\boxed{16}$.
+Final Answer: The final answer is (C). I hope it is correct.
+Problem:
+If the system of equations $6x-4y=a,$ $6y-9x=b$ has a solution $(x,y)$ where $x$ and $y$ are both nonzero, find $\frac{a}{b},$ assuming $b$ is nonzero.
+What of the following is the right choice? Explain your answer.
+(A) $-\frac{2}{3}$
+(B) $\frac{2}{3}$
+(C) $\frac{1}{3}$
+(D) $\frac{4}{9}$
+Solution:
+If we multiply the first equation by $-\frac{3}{2}$, we obtain $6y-9x=-\frac{3}{2}a$. Since we also know that $6y-9x=b$, we have $-\frac{3}{2}a=b \Rightarrow \frac{a}{b}=\boxed{-\frac{2}{3}}$.
+Final Answer: The final answer is (A). I hope it is correct.
+Problem:
+"""
+
+MMLU_INSTRUCT_PREFIX = r"""Simplify and write the result with a rational denominator: $$\sqrt{\sqrt[3]{\sqrt{\frac{1}{729}}}}$$
+Answer Choices: (A) \frac{3\sqrt{3}}{3} (B) \frac{1}{3} (C) \sqrt{3} (D) \frac{\sqrt{3}}{3}
+Factoring $729=3^6$ and combining the roots $\frac{1}{2}\frac{1}{3}\frac{1}{2}=\frac{1}{12}$, we get that $\sqrt{\sqrt[3]{\sqrt{\frac{1}{729}}}}=\left(\frac{1}{3^6}\right)^{\frac{1}{12}}=\frac{1}{3^{\frac{1}{2}}}=\frac{3}{\sqrt{3}}$. The answer is (D).
+
+In animal cells, which of the following represents the most likely pathway that a secretory protein takes as it is synthesized in a cell?
+Answer Choices: (A) Plasma membrane–Golgi apparatus–ribosome–secretory vesicle–rough ER (B) Ribosome–Golgi apparatus–rough ER–secretory vesicle–plasma membrane (C) Plasma membrane–Golgi apparatus–ribosome–secretory vesicle–rough ER (D) Ribosome–rough ER–Golgi apparatus–secretory vesicle–plasma membrane
+Protein synthesis starts at the ribosome, so we can eliminate (A) and (C). The ribosome is often in the endoplasmic reticulum and moves from there to the Golgi apparatus, where it is modified and packaged into a vesicle. The vesicle then floats to the plasma membrane and is secreted. The answer is (D).
+
+A microwave oven is connected to an outlet, 120 V, and draws a current of 2 amps. At what rate is energy being used by the microwave oven?
+Answer Choices: (A) 10 W (B) 30 W (C) 60 W (D) 240 W
+Rate of energy usage is known as power; in an dissipative electrical circuit, power is given by voltage times current. So in our case, the power is 120 V times 2 amps, or 240 W. The answer is (D).
+
+Which of the following is considered an acid anhydride?
+Answer Choices: (A) HCl (B) H2SO3 (C) SO2 (D) Al(NO3)3
+An acid anhydride is a compound that is derived by removing water from an acid. The chemical formula for water is H2O, which means that we need to determine which of these options, when combined with H2O, forms an acid. SO2, or Sulfur dioxide, when combined with H2O, makes H2SO4, or sulfuric acid. The answer is (C).
+
+What is the output of "abc"[::-1] in Python 3?
+Answer Choices: (A) Error (B) abc (C) cba (D) c
+We know that the slicing operator [::-1] takes all of the elements in the string in reverse order, so we reverse the order of the string "abc", resulting in "cba". The answer is (C).
+
+"""

@@ -136,9 +136,7 @@ def _eval_benchmark(
 ):
     name = benchmark["name"]
     started_at = time.perf_counter()
-    few_shots = _load_few_shot_demonstrations(benchmark)
-    settings_demonstrations = next(iter(few_shots.values()), None)
-    settings = get_eval_settings(protocol, name, settings_demonstrations)
+    settings = get_eval_settings(protocol, name)
     benchmark_generation = replace(generation, stop_strings=settings["stop_strings"])
     metrics = _empty_metrics()
     examples = _benchmark_examples(
@@ -157,7 +155,6 @@ def _eval_benchmark(
                     example["problem"],
                     benchmark=name,
                     protocol=protocol,
-                    demonstrations=_demonstrations_for(example, few_shots),
                 )
                 for example in batch
             ]
@@ -232,42 +229,6 @@ def _eval_benchmark(
     return result
 
 
-def _load_few_shot_demonstrations(benchmark):
-    """Load subject-specific demonstrations when a benchmark provides them."""
-
-    if "few_shot_split" not in benchmark:
-        return {}
-
-    count = benchmark.get("num_few_shots", 5)
-    if count < 1:
-        raise ValueError("num_few_shots must be positive")
-
-    demonstrations = {}
-    for subset in benchmark.get("subsets", [benchmark.get("subset")]):
-        source = {
-            "adapter": benchmark["adapter"],
-            "path": benchmark["path"],
-            "revision": benchmark["revision"],
-            "split": benchmark["few_shot_split"],
-            "subset": subset,
-            "streaming": benchmark.get("streaming", True),
-        }
-        demonstrations[subset] = list(islice(load_math_source(source), count))
-        if len(demonstrations[subset]) != count:
-            raise ValueError(
-                f"Benchmark {benchmark['name']!r}/{subset!r} provides only "
-                f"{len(demonstrations[subset])} of {count} requested few-shot examples"
-            )
-    return demonstrations
-
-
-def _demonstrations_for(example, few_shots):
-    if not few_shots:
-        return None
-    subset = example["source"].rsplit(":", 1)[-1]
-    return few_shots[subset]
-
-
 def _benchmark_examples(benchmark, cli_limit, *, sample_seed, shuffle_buffer_size):
     selected_limit = cli_limit if cli_limit is not None else benchmark.get("limit")
     source_template = {
@@ -275,7 +236,7 @@ def _benchmark_examples(benchmark, cli_limit, *, sample_seed, shuffle_buffer_siz
         "path": benchmark["path"],
         "revision": benchmark["revision"],
         "split": benchmark["split"],
-        "streaming": benchmark.get("streaming", True),
+        "streaming": benchmark.get("streaming", False),
     }
     if selected_limit is not None:
         source_template["shuffle_seed"] = sample_seed

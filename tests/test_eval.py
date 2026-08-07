@@ -119,7 +119,6 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
 @pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
 def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path):
     def load(source):
-        count = 5 if source["split"] == "dev" else 1
         subset = source.get("subset")
         is_mmlu = source["adapter"] == "mmlu"
         return iter(
@@ -133,13 +132,13 @@ def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path
                 "answer": "C" if is_mmlu else "4",
                 "source": f"{source['path']}:{subset}" if subset else source["path"],
             }
-            for _ in range(count)
+            for _ in range(1)
         )
 
     class ConfigBackend:
         def generate(self, prompts, config):
             return [
-                ["The answer is C." if "A. one" in prompt else "The answer is 4."]
+                ["The answer is C." if "Which option is correct?" in prompt else "The answer is 4."]
                 for prompt in prompts
             ]
 
@@ -221,45 +220,14 @@ def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
 
     assert seen[0]["shuffle_seed"] == 123
     assert seen[0]["shuffle_buffer_size"] == 456
+    assert seen[0]["streaming"] is False
 
 
-def test_mmlu_few_shots_are_loaded_from_each_subject_dev_split(monkeypatch):
-    seen = []
+def test_mmlu_uses_fixed_paper_shots_and_exact_choice_grading(monkeypatch, tmp_path):
+    seen_splits = []
 
     def load(source):
-        seen.append(source)
-        return iter(
-            {
-                "problem": f"demo {index}",
-                "solution": None,
-                "answer": "A",
-                "source": f"cais/mmlu:{source['subset']}",
-            }
-            for index in range(5)
-        )
-
-    monkeypatch.setattr(eval, "load_math_source", load)
-    benchmark = {
-        "name": "mmlu_stem",
-        "adapter": "mmlu",
-        "path": "cais/mmlu",
-        "revision": "fixture",
-        "split": "test",
-        "few_shot_split": "dev",
-        "num_few_shots": 5,
-        "subsets": ["abstract_algebra", "anatomy"],
-    }
-
-    demonstrations = eval._load_few_shot_demonstrations(benchmark)
-
-    assert set(demonstrations) == {"abstract_algebra", "anatomy"}
-    assert all(len(examples) == 5 for examples in demonstrations.values())
-    assert {source["split"] for source in seen} == {"dev"}
-
-
-def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path):
-    def load(source):
-        count = 5 if source["split"] == "dev" else 1
+        seen_splits.append(source["split"])
         return iter(
             {
                 "problem": f"question {index}\nA. one\nB. two\nC. three\nD. four",
@@ -267,7 +235,7 @@ def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path)
                 "answer": "C",
                 "source": "cais/mmlu:abstract_algebra",
             }
-            for index in range(count)
+            for index in range(1)
         )
 
     monkeypatch.setattr(eval, "load_math_source", load)
@@ -292,8 +260,6 @@ def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path)
                     "path": "cais/mmlu",
                     "revision": "fixture",
                     "split": "test",
-                    "few_shot_split": "dev",
-                    "num_few_shots": 5,
                     "subsets": ["abstract_algebra"],
                 }
             ],
@@ -309,5 +275,6 @@ def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path)
 
     result = summary["benchmarks"]["mmlu_stem"]
     assert result["accuracy"] == 1.0
-    assert result["num_shots"] == 5
+    assert result["num_shots"] == 4
     assert result["extraction_methods"] == {"answer_marker": 1}
+    assert seen_splits == ["test"]

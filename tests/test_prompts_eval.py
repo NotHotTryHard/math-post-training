@@ -17,9 +17,7 @@ class RecordingTokenizer:
 def test_base_protocol_uses_published_shot_counts():
     assert get_eval_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
     assert get_eval_settings("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == [
-        "Question:"
-    ]
+    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == ["Question:"]
 
 
 def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
@@ -78,35 +76,44 @@ def test_instruct_protocol_uses_chat_template_and_boxed_system_prompt():
     assert tokenizer.messages[1] == {"role": "user", "content": "What is 1 + 1?"}
 
 
-def test_mmlu_prompt_adds_subject_dev_examples():
-    demonstrations = [
-        {
-            "problem": "Demo\nA. one\nB. two\nC. three\nD. four",
-            "answer": "B",
-        }
-    ]
+def test_base_mmlu_prompt_uses_published_four_shots():
     prompt = build_eval_prompt(
         RecordingTokenizer(),
         "Target\nA. one\nB. two\nC. three\nD. four",
         benchmark="mmlu_stem",
         protocol="qwen2_5_math_base",
-        demonstrations=demonstrations,
     )
 
-    assert prompt.startswith("Question: Demo")
-    assert "Answer: B" in prompt
-    assert prompt.endswith("D. four\nAnswer:")
-    settings = get_eval_settings(
-        "qwen2_5_math_base",
-        "mmlu_stem",
-        demonstrations,
+    assert prompt.count("Problem:\n") == 5
+    assert "Final Answer: The final answer is (B)." in prompt
+    assert prompt.endswith(
+        "Target\nWhat of the following is the right choice? Explain your answer.\n"
+        "(A) one\n(B) two\n(C) three\n(D) four\nSolution:"
     )
-    assert settings["num_shots"] == 1
+    settings = get_eval_settings("qwen2_5_math_base", "mmlu_stem")
+    assert settings["num_shots"] == 4
     assert settings["answer_kind"] == "choice"
+    assert settings["stop_strings"] == ["Problem:"]
 
 
-def test_mmlu_requires_dev_examples():
-    with pytest.raises(ValueError, match="requires dev demonstrations"):
+def test_instruct_mmlu_prompt_uses_official_five_shots_in_one_user_turn():
+    tokenizer = RecordingTokenizer()
+    build_eval_prompt(
+        tokenizer,
+        "Target\nA. one\nB. two\nC. three\nD. four",
+        benchmark="mmlu_stem",
+        protocol="qwen2_5_math_instruct",
+    )
+
+    user_prompt = tokenizer.messages[1]["content"]
+    assert user_prompt.count("Answer Choices:") == 6
+    assert "secretory protein" in user_prompt
+    assert user_prompt.endswith("Target\nAnswer Choices: (A) one (B) two (C) three (D) four")
+    assert get_eval_settings("qwen2_5_math_instruct", "mmlu_stem")["num_shots"] == 5
+
+
+def test_mmlu_requires_rendered_choices():
+    with pytest.raises(ValueError, match="must end with A-D choices"):
         build_eval_prompt(
             RecordingTokenizer(),
             "question",

@@ -58,8 +58,6 @@ eval:
       path: cais/mmlu
       revision: c30699e8356da336a370243923dbaf21066bb9fe
       split: test
-      few_shot_split: dev
-      num_few_shots: 5
       subsets:
         - abstract_algebra
         - anatomy

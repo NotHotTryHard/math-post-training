@@ -88,10 +88,10 @@ few-shot+CoT prompt соответственно. Последний запус�
 с официальной CoT system instruction. Published Base protocol содержит 8 GSM8K/GSM1K и 4 MATH
 demonstrations из Appendix B Qwen2.5-Math.
 
-В двух zero-shot Base-конфигах MMLU-STEM тоже запускается zero-shot. В published Base и Instruct
-конфигах он запускается 5-shot: пять фиксированных примеров каждого subject загружаются из его
-`dev`, а метрика считается на `test`. Это единственный prompt, prefix которого собирается
-динамически, потому что demonstrations различаются между subject.
+В двух zero-shot Base-конфигах MMLU-STEM тоже запускается zero-shot. Published Base protocol
+использует фиксированный 4-shot CoT prompt из Appendix B, а Instruct protocol — фиксированный
+5-shot CoT prompt из официального Qwen evaluation harness. В обоих случаях метрика считается
+на `test`; дополнительные строки из `dev` не загружаются.
 
 MMLU-STEM здесь измеряется генерацией ответа и exact-match по букве A–D. Это удобно для общего
 pipeline, но не следует сравнивать с MMLU-числами, полученными через log-likelihood scoring, без
