@@ -32,12 +32,5 @@ def test_math_verifier_accepts_equivalent_forms():
     assert correct
 
 
-def test_multiple_answer_verifier_checks_every_blank():
-    assert check_answer("$5$;$10$", "$5$; $10$", multiple=True) == (True, True)
-    assert check_answer("$5$;$10$", "$7$; $10$", multiple=True) == (True, False)
-
-
-def test_textual_gaokao_answer_has_exact_match_fallback():
-    answer = "三组对面分别平行;对角线互相平分"
-
-    assert check_answer(answer, answer, multiple=True) == (False, True)
+def test_unparseable_text_is_not_silently_accepted():
+    assert check_answer("not math", "not math") == (False, False)

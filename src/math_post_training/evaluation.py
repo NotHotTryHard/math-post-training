@@ -127,7 +127,6 @@ def _evaluate_benchmark(
             parsed, correct = check_answer(
                 example["answer"],
                 prediction,
-                multiple=benchmark.get("multiple_answers", False),
             )
             format_ok = follows_answer_format(
                 completion,

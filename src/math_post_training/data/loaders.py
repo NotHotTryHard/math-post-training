@@ -3,7 +3,6 @@
 from datasets import interleave_datasets, load_dataset
 
 from math_post_training.data.sources import (
-    gaokao_math_cloze,
     gsm1k,
     gsm8k,
     hendrycks_math,
@@ -11,7 +10,6 @@ from math_post_training.data.sources import (
 )
 
 NORMALIZERS = {
-    "gaokao_math_cloze": gaokao_math_cloze.normalize,
     "gsm1k": gsm1k.normalize,
     "gsm8k": gsm8k.normalize,
     "hendrycks_math": hendrycks_math.normalize,

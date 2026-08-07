@@ -52,7 +52,7 @@ model-evaluate --limit 10
 ```
 
 `--limit 10` — быстрый локальный прогон десяти примеров из каждого benchmark. Без этого флага
-используются полные test splits GSM8K, GSM1k, MATH и GaoKao Math Cloze. Один benchmark можно
+используются полные test splits GSM8K, GSM1k и MATH. Один benchmark можно
 выбрать отдельно (флаг разрешено повторять):
 
 ```bash
@@ -75,8 +75,8 @@ model-evaluate \
   --benchmark gsm8k
 ```
 
-Это фиксированные примеры из Appendix B Qwen2.5-Math: 8-shot для GSM8K/GSM1k, 4-shot для MATH
-и 5-shot для GaoKao Math Cloze. В `summary.json` сохраняются protocol, число shots, dataset
+Это фиксированные примеры из Appendix B Qwen2.5-Math: 8-shot для GSM8K/GSM1k и 4-shot для
+MATH. В `summary.json` сохраняются protocol, число shots, dataset
 revision и `is_full_split`; сравнивать с опубликованной таблицей можно только полный split с тем
 же протоколом. Для проверки другого checkpoint:
 

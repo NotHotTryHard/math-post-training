@@ -41,7 +41,7 @@ evaluation:
   backend: transformers
   # Official Qwen2.5-Math zero-shot CoT prompt for Instruct checkpoints.
   # Use qwen2_5_math_base with Qwen/Qwen2.5-1.5B to reproduce the paper's
-  # fixed 8-shot GSM8K, 4-shot MATH and 5-shot GaoKao Base protocol.
+  # fixed 8-shot GSM8K and 4-shot MATH Base protocol.
   protocol: qwen2_5_math_instruct
   output_dir: outputs/evaluations
   sample_seed: 42
@@ -86,12 +86,3 @@ evaluation:
       revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
       split: test
       streaming: true
-
-    - name: gaokao_math_cloze
-      adapter: gaokao_math_cloze
-      path: RUCAIBox/agieval
-      subset: gaokao-mathcloze
-      revision: bbbf8d5d1428b22efc42e3b51f797fb4d139180c
-      split: test
-      streaming: true
-      multiple_answers: true

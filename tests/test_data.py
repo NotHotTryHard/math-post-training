@@ -4,7 +4,6 @@ from datasets import IterableDataset
 from math_post_training.data import loaders
 from math_post_training.data.preprocessing import to_grpo_example, to_sft_example
 from math_post_training.data.sources import (
-    gaokao_math_cloze,
     gsm1k,
     gsm8k,
     hendrycks_math,
@@ -60,20 +59,6 @@ def test_math_normalization_extracts_nested_boxed_answer():
 
     assert example.answer == r"\frac{1}{2}"
     assert example.source == "EleutherAI/hendrycks_math:prealgebra"
-
-
-def test_gaokao_normalization_keeps_multiple_answers():
-    example = gaokao_math_cloze.normalize(
-        {
-            "passage": None,
-            "question": "求两个空。",
-            "label": "$5$;$10$",
-            "explanation": None,
-        }
-    )
-
-    assert example.problem == "求两个空。"
-    assert example.answer == "$5$;$10$"
 
 
 def test_sft_and_grpo_use_different_parts_of_the_same_example():

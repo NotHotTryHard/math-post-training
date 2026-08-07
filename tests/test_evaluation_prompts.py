@@ -14,7 +14,6 @@ class FakeTokenizer:
 def test_base_protocol_uses_published_shot_counts():
     assert protocol_metadata("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
     assert protocol_metadata("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert protocol_metadata("qwen2_5_math_base", "gaokao_math_cloze")["num_shots"] == 5
     assert protocol_metadata("qwen2_5_math_base", "gsm8k")["stop_strings"] == ["Question:"]
 
 
