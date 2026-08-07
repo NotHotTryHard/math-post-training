@@ -1,2 +1,1 @@
 """Answer extraction and verification."""
-

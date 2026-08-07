@@ -17,3 +17,4 @@ class GenerationConfig:
     temperature: float = 0.8
     top_p: float = 0.95
     seed: int | None = None
+    stop_strings: list[str] | None = None

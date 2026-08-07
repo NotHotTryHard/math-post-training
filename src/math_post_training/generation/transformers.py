@@ -30,25 +30,21 @@ class TransformersBackend:
         inputs = self.tokenizer(list(prompts), padding=True, return_tensors="pt").to(self.device)
         prompt_width = inputs["input_ids"].shape[1]
 
+        generation_args = {
+            "max_new_tokens": config.max_new_tokens,
+            "num_return_sequences": config.num_return_sequences,
+            "do_sample": config.do_sample,
+            "pad_token_id": self.tokenizer.pad_token_id,
+        }
+        if config.stop_strings:
+            generation_args["stop_strings"] = config.stop_strings
+            generation_args["tokenizer"] = self.tokenizer
+        if config.do_sample:
+            generation_args["temperature"] = config.temperature
+            generation_args["top_p"] = config.top_p
+
         with torch.inference_mode():
-            if config.do_sample:
-                output_ids = self.model.generate(
-                    **inputs,
-                    max_new_tokens=config.max_new_tokens,
-                    num_return_sequences=config.num_return_sequences,
-                    do_sample=True,
-                    temperature=config.temperature,
-                    top_p=config.top_p,
-                    pad_token_id=self.tokenizer.pad_token_id,
-                )
-            else:
-                output_ids = self.model.generate(
-                    **inputs,
-                    max_new_tokens=config.max_new_tokens,
-                    num_return_sequences=config.num_return_sequences,
-                    do_sample=False,
-                    pad_token_id=self.tokenizer.pad_token_id,
-                )
+            output_ids = self.model.generate(**inputs, **generation_args)
 
         flat_completions = self.tokenizer.batch_decode(
             output_ids[:, prompt_width:],

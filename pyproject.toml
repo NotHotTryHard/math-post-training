@@ -13,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 model-generate = "math_post_training.cli:generate_main"
+model-evaluate = "math_post_training.cli:evaluate_main"
 
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12"]
@@ -22,6 +23,9 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1,<10",
     "ruff>=0.16,<0.17",
+]
+eval = [
+    "math-verify[antlr4-13-2]>=0.9,<1",
 ]
 train = [
     "accelerate>=1.14,<2",

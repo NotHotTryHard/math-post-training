@@ -1,2 +1,1 @@
 """Compare normalized numeric answers."""
-

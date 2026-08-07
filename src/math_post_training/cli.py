@@ -24,7 +24,7 @@ def _device(requested):
     return "cpu"
 
 
-def _parser():
+def _generate_parser():
     parser = argparse.ArgumentParser(description="Generate text with a Transformers causal LM")
     parser.add_argument("prompt")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
@@ -36,7 +36,7 @@ def _parser():
 
 
 def generate_main(argv=None):
-    args = _parser().parse_args(argv)
+    args = _generate_parser().parse_args(argv)
     config = load_yaml_config(args.config)
 
     model_config = dict(config["model"])
@@ -63,6 +63,67 @@ def generate_main(argv=None):
         if len(completions) > 1:
             print(f"[{index}]")
         print(completion)
+    return 0
+
+
+def _evaluate_parser():
+    parser = argparse.ArgumentParser(description="Evaluate a model on math benchmarks")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument("--model", help="override model.name_or_path with a checkpoint")
+    parser.add_argument("--device", default="auto")
+    parser.add_argument("--limit", type=int, help="evaluate this many examples per benchmark")
+    parser.add_argument("--batch-size", type=int, help="override evaluation.batch_size")
+    parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        help="override evaluation.generation.max_new_tokens",
+    )
+    parser.add_argument(
+        "--benchmark",
+        action="append",
+        dest="benchmarks",
+        help="run only this benchmark; repeat to select several",
+    )
+    parser.add_argument("--protocol", help="override evaluation.protocol")
+    parser.add_argument("--output-dir", type=Path)
+    return parser
+
+
+def evaluate_main(argv=None):
+    args = _evaluate_parser().parse_args(argv)
+    config = load_yaml_config(args.config)
+
+    if args.protocol is not None:
+        config["evaluation"]["protocol"] = args.protocol
+    if args.batch_size is not None:
+        config["evaluation"]["batch_size"] = args.batch_size
+    if args.max_new_tokens is not None:
+        config["evaluation"]["generation"]["max_new_tokens"] = args.max_new_tokens
+
+    model_config = dict(config["model"])
+    if args.model is not None:
+        model_config["name_or_path"] = args.model
+
+    backend_name = config["evaluation"]["backend"]
+    if backend_name != "transformers":
+        raise ValueError(f"model-evaluate does not support backend {backend_name!r} yet")
+
+    device = _device(args.device)
+    model, tokenizer = load_model_and_tokenizer(**model_config, device=device)
+    backend = TransformersBackend(model, tokenizer, device)
+
+    from math_post_training.evaluation import evaluate_model
+
+    run_dir, _ = evaluate_model(
+        backend,
+        tokenizer,
+        config,
+        model_name=model_config["name_or_path"],
+        limit=args.limit,
+        benchmark_names=args.benchmarks,
+        output_dir=args.output_dir,
+    )
+    print(f"Results: {run_dir}")
     return 0
 
 

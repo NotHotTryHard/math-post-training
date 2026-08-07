@@ -6,7 +6,7 @@ SFT с последующим GRPO для `Qwen/Qwen2.5-1.5B` на GSM8K.
 
 ## Конфигурация
 
-`configs/config.yaml.example` служит полным примером конфигурации со смесью источников, а
+`configs/config.example.yaml` служит полным примером конфигурации со смесью источников, а
 `configs/current.yaml` — текущим локальным экспериментом с одним источником. Параметры модели,
 датасета, генерации и обучения хранятся в YAML; секреты и настройки конкретного W&B workspace
 берутся из окружения:
@@ -42,11 +42,57 @@ model-generate "If x + 3 = 7, what is x?"
 model-generate --model Qwen/Qwen2.5-1.5B --raw "The answer to 2 + 2 is"
 ```
 
+## Evaluation
+
+Evaluation запускается отдельно от train-зависимостей:
+
+```bash
+uv sync --group eval
+model-evaluate --limit 10
+```
+
+`--limit 10` — быстрый локальный прогон десяти примеров из каждого benchmark. Без этого флага
+используются полные test splits GSM8K, GSM1k, MATH и GaoKao Math Cloze. Один benchmark можно
+выбрать отдельно (флаг разрешено повторять):
+
+```bash
+model-evaluate --benchmark gsm8k
+```
+
+Для MATH ограниченная выборка набирается round-robin по всем семи категориям, а не только из
+первой категории `algebra`. Перед limited-run строки детерминированно перемешиваются с
+`evaluation.sample_seed`, поэтому это не просто первые N строк. Размер батча для конкретной машины можно подобрать через
+`--batch-size`; это не меняет greedy-предсказания. `--max-new-tokens` полезен для ограниченного
+локального прогона, но уже меняет evaluation protocol и поэтому сохраняется в `summary.json`.
+
+`evaluation.protocol: qwen2_5_math_instruct` воспроизводит официальный zero-shot CoT prompt с
+ответом в `\\boxed{}`. Для Base checkpoint используется опубликованный few-shot протокол:
+
+```bash
+model-evaluate \
+  --model Qwen/Qwen2.5-1.5B \
+  --protocol qwen2_5_math_base \
+  --benchmark gsm8k
+```
+
+Это фиксированные примеры из Appendix B Qwen2.5-Math: 8-shot для GSM8K/GSM1k, 4-shot для MATH
+и 5-shot для GaoKao Math Cloze. В `summary.json` сохраняются protocol, число shots, dataset
+revision и `is_full_split`; сравнивать с опубликованной таблицей можно только полный split с тем
+же протоколом. Для проверки другого checkpoint:
+
+```bash
+model-evaluate --model outputs/checkpoints/my-model
+```
+
+Каждый запуск создаёт `summary.json` с метриками. Если `evaluation.save_predictions` включён,
+рядом сохраняется `predictions.jsonl.gz`: сжатые задачи, ответы и результаты проверки нужны для
+разбора ошибок и обычно занимают мегабайты или десятки мегабайт, а не гигабайты.
+
 ## Структура
 
 ```text
 configs/
-├── config.yaml.example  # Полный пример конфигурации эксперимента.
+├── config.example.yaml  # Полный пример конфигурации эксперимента.
 └── current.yaml         # Текущий локальный эксперимент.
 
 src/math_post_training/
@@ -68,5 +114,6 @@ src/math_post_training/
 │   └── vllm.py          # Адаптер для vLLM с ленивым optional import.
 └── verifiers/
     ├── extraction.py    # Извлечение финального ответа из completion.
-    └── numeric.py       # Сравнение числовых ответов.
+    ├── math.py          # Numeric/symbolic equivalence через Math-Verify.
+    └── numeric.py       # Заготовка numeric-only verifier для rewards.
 ```

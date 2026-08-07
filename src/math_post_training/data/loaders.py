@@ -2,10 +2,19 @@
 
 from datasets import interleave_datasets, load_dataset
 
-from math_post_training.data.sources import gsm8k, open_math_instruct_2
+from math_post_training.data.sources import (
+    gaokao_math_cloze,
+    gsm1k,
+    gsm8k,
+    hendrycks_math,
+    open_math_instruct_2,
+)
 
 NORMALIZERS = {
+    "gaokao_math_cloze": gaokao_math_cloze.normalize,
+    "gsm1k": gsm1k.normalize,
     "gsm8k": gsm8k.normalize,
+    "hendrycks_math": hendrycks_math.normalize,
     "open_math_instruct_2": open_math_instruct_2.normalize,
 }
 
@@ -14,7 +23,7 @@ def load_math_dataset(config):
     """Load and optionally mix the experiment's dataset sources."""
 
     sources = config["sources"]
-    datasets = [_load_source(source) for source in sources]
+    datasets = [load_math_source(source) for source in sources]
 
     if len(datasets) == 1:
         return datasets[0]
@@ -29,7 +38,7 @@ def load_math_dataset(config):
     )
 
 
-def _load_source(config):
+def load_math_source(config):
     """Load and normalize one source before it is used alone or in a mixture."""
 
     normalizer = NORMALIZERS[config["adapter"]]

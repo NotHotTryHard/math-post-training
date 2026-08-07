@@ -35,8 +35,9 @@ dataset:
 
 prompt:
   system: >-
-    Solve the problem step by step. Put the final numeric answer after ####.
+    Solve the problem step by step. Put the final answer after ####.
   answer_delimiter: "####"
+  use_chat_template: true
 
 generation:
   backend: transformers
@@ -62,8 +63,63 @@ training:
   use_vllm: false
 
 evaluation:
-  per_device_eval_batch_size: 4
-  num_samples: 128
+  backend: transformers
+  # Official Qwen2.5-Math zero-shot CoT prompt for Instruct checkpoints.
+  # Use qwen2_5_math_base with Qwen/Qwen2.5-1.5B to reproduce the paper's
+  # fixed 8-shot GSM8K, 4-shot MATH and 5-shot GaoKao Base protocol.
+  protocol: qwen2_5_math_instruct
+  output_dir: outputs/evaluations
+  sample_seed: 42
+  shuffle_buffer_size: 10_000
+  batch_size: 4
+  save_predictions: true
+  generation:
+    max_new_tokens: 2048
+    num_return_sequences: 1
+    do_sample: false
+    temperature: 0.0
+    top_p: 1.0
+    seed: 42
+  benchmarks:
+    - name: gsm8k
+      adapter: gsm8k
+      path: openai/gsm8k
+      subset: main
+      revision: 740312add88f781978c0658806c59bc2815b9866
+      split: test
+      streaming: true
+
+    - name: gsm1k
+      adapter: gsm1k
+      path: ScaleAI/gsm1k
+      subset: null
+      revision: bc09569d09a614b9b530edc7f076fb214ac10493
+      split: test
+      streaming: true
+
+    - name: math
+      adapter: hendrycks_math
+      path: EleutherAI/hendrycks_math
+      subsets:
+        - algebra
+        - counting_and_probability
+        - geometry
+        - intermediate_algebra
+        - number_theory
+        - prealgebra
+        - precalculus
+      revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
+      split: test
+      streaming: true
+
+    - name: gaokao_math_cloze
+      adapter: gaokao_math_cloze
+      path: RUCAIBox/agieval
+      subset: gaokao-mathcloze
+      revision: bbbf8d5d1428b22efc42e3b51f797fb4d139180c
+      split: test
+      streaming: true
+      multiple_answers: true
 
 tracking:
   report_to: wandb
