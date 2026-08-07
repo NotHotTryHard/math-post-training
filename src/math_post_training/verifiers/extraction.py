@@ -14,6 +14,28 @@ def extract_final_answer(completion, *, answer_kind="math", delimiter="####"):
     last-resort heuristic, and its use is recorded in evaluation outputs.
     """
 
+    if answer_kind == "choice":
+        markers = list(ANSWER_MARKER.finditer(completion))
+        if markers:
+            answer = _first_answer_line(completion[markers[-1].end() :])
+            choices = CHOICE.findall(answer)
+            if choices:
+                return choices[0].upper(), "answer_marker"
+
+        boxed = extract_last_boxed(completion)
+        if boxed is not None:
+            choices = CHOICE.findall(boxed)
+            if choices:
+                return choices[-1].upper(), "boxed"
+
+        choices = CHOICE.findall(completion)
+        if choices:
+            return choices[-1].upper(), "last_choice"
+        return "", "not_found"
+
+    if answer_kind != "math":
+        raise ValueError(f"Unknown answer kind: {answer_kind!r}")
+
     boxed = extract_last_boxed(completion)
     if boxed is not None:
         return boxed, "boxed"
@@ -28,16 +50,9 @@ def extract_final_answer(completion, *, answer_kind="math", delimiter="####"):
         if answer:
             return answer, "answer_marker"
 
-    if answer_kind == "choice":
-        choices = CHOICE.findall(completion)
-        if choices:
-            return choices[-1].upper(), "last_choice"
-    elif answer_kind == "math":
-        numbers = NUMBER.findall(completion)
-        if numbers:
-            return numbers[-1].replace(",", ""), "last_number"
-    else:
-        raise ValueError(f"Unknown answer kind: {answer_kind!r}")
+    numbers = NUMBER.findall(completion)
+    if numbers:
+        return numbers[-1].replace(",", ""), "last_number"
 
     return "", "not_found"
 

@@ -68,6 +68,24 @@ def test_choice_fallback_uses_the_last_standalone_choice():
     assert extract_final_answer(completion, answer_kind="choice") == ("C", "last_choice")
 
 
+def test_choice_extraction_uses_letter_after_final_answer_marker():
+    completion = "Final Answer: The final answer is (D). I hope it is correct."
+
+    assert extract_final_answer(completion, answer_kind="choice") == ("D", "answer_marker")
+
+
+def test_choice_final_answer_wins_over_numeric_box():
+    completion = r"The result is \boxed{9}. Final Answer: The final answer is (A)."
+
+    assert extract_final_answer(completion, answer_kind="choice") == ("A", "answer_marker")
+
+
+def test_choice_extraction_accepts_boxed_letter_without_marker():
+    completion = r"Therefore, \boxed{\text{C}}"
+
+    assert extract_final_answer(completion, answer_kind="choice") == ("C", "boxed")
+
+
 def test_choice_verifier_uses_exact_option_letter():
     assert check_choice_answer("C", "(c)") == (True, True)
     assert check_choice_answer("C", "D") == (True, False)
