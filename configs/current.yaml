@@ -52,7 +52,6 @@ eval:
       subset: main
       revision: 740312add88f781978c0658806c59bc2815b9866
       split: test
-      streaming: true
 
     - name: gsm1k
       adapter: gsm1k
@@ -60,7 +59,6 @@ eval:
       subset: null
       revision: bc09569d09a614b9b530edc7f076fb214ac10493
       split: test
-      streaming: true
 
     - name: math
       adapter: hendrycks_math
@@ -75,7 +73,6 @@ eval:
         - precalculus
       revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
       split: test
-      streaming: true
 
     - name: mmlu_stem
       adapter: mmlu
@@ -84,7 +81,6 @@ eval:
       split: test
       few_shot_split: dev
       num_few_shots: 5
-      streaming: true
       subsets:
         - abstract_algebra
         - anatomy
