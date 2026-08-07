@@ -162,11 +162,15 @@ def _eval_benchmark(
 
             for example, generated in zip(batch, completions, strict=True):
                 completion = generated[0]
+                completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
+                truncated = completion_tokens >= generation.max_new_tokens - 1
                 prediction, extraction_method = extract_final_answer(
                     completion,
                     answer_kind=settings["answer_kind"],
                 )
-                if settings["answer_kind"] == "choice":
+                if truncated and extraction_method in {"last_number", "last_choice"}:
+                    parsed, correct = False, False
+                elif settings["answer_kind"] == "choice":
                     parsed, correct = check_choice_answer(example["answer"], prediction)
                 else:
                     parsed, correct = check_answer(example["answer"], prediction)
@@ -174,7 +178,6 @@ def _eval_benchmark(
                     completion,
                     answer_format=settings["required_answer_format"],
                 )
-                completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
 
                 record = {
                     "benchmark": name,
@@ -189,7 +192,7 @@ def _eval_benchmark(
                     "correct": correct,
                     "format_ok": format_ok,
                     "completion_tokens": completion_tokens,
-                    "truncated": completion_tokens >= generation.max_new_tokens - 1,
+                    "truncated": truncated,
                 }
                 _update_metrics(metrics, record)
 
@@ -396,8 +399,7 @@ def _start_wandb_run(
     if settings.get("log_predictions", True):
         selected = _select_benchmarks(config["eval"]["benchmarks"], benchmark_names)
         tables = {
-            benchmark["name"]: wandb.Table(columns=PREDICTION_COLUMNS)
-            for benchmark in selected
+            benchmark["name"]: wandb.Table(columns=PREDICTION_COLUMNS) for benchmark in selected
         }
     return run, tables
 
@@ -424,9 +426,7 @@ def _log_wandb_results(run, prediction_tables, summary):
                 run.summary[f"eval/{benchmark}/{metric}"] = value
 
         for source, source_result in result.get("by_source", {}).items():
-            run.summary[f"eval/{benchmark}/by_source/{source}/accuracy"] = source_result[
-                "accuracy"
-            ]
+            run.summary[f"eval/{benchmark}/by_source/{source}/accuracy"] = source_result["accuracy"]
 
     for benchmark, table in prediction_tables.items():
         run.log({f"eval/{benchmark}/predictions": table})

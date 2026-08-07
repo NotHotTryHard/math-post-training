@@ -72,13 +72,13 @@ def get_eval_settings(protocol, benchmark):
     if protocol == "qwen2_5_math_base":
         if benchmark in {"gsm8k", "gsm1k"}:
             num_shots = 8
-            stop_strings = ["Question:"]
+            stop_strings = ["Question:", "[Question]", "\nQ:"]
         elif benchmark == "math":
             num_shots = 4
-            stop_strings = ["Problem:"]
+            stop_strings = ["Problem:", "[Problem]", "\nQ:"]
         elif benchmark == "mmlu_stem":
             num_shots = 4
-            stop_strings = ["Problem:"]
+            stop_strings = ["Problem:", "[Problem]", "\nQ:"]
         else:
             raise ValueError(f"No Qwen Base settings are defined for benchmark {benchmark!r}")
         return {
@@ -92,7 +92,10 @@ def get_eval_settings(protocol, benchmark):
         "qwen2_5_math_base_zero_shot",
         "qwen2_5_math_base_zero_shot_cot",
     }:
-        stop_strings = ["Problem:"] if benchmark == "math" else ["Question:"]
+        if benchmark == "math":
+            stop_strings = ["Problem:", "[Problem]", "\nQ:"]
+        else:
+            stop_strings = ["Question:", "[Question]", "\nQ:"]
         return {
             "num_shots": 0,
             "answer_kind": answer_kind,

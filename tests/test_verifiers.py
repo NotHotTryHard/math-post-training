@@ -33,6 +33,19 @@ def test_math_verifier_accepts_equivalent_forms():
     assert correct
 
 
+@pytest.mark.parametrize(
+    ("reference", "prediction"),
+    [
+        (r"\sqrt{13}", r"\sqrt{13}"),
+        (r"-\frac{24}{25}", r"$-0.96$"),
+        (r"987,\!436", "987436"),
+        ("(-13,-16,-18)", r"$(-13,-16,-18)$"),
+    ],
+)
+def test_math_verifier_parses_extracted_latex(reference, prediction):
+    assert check_answer(reference, prediction) == (True, True)
+
+
 def test_unparseable_text_is_not_silently_accepted():
     assert check_answer("not math", "not math") == (False, False)
 

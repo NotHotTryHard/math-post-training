@@ -116,6 +116,66 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
     assert wandb_run.exit_code == 0
 
 
+def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
+    class TruncatedBackend:
+        def generate(self, prompts, config):
+            return [["unfinished reasoning gives 4"] for _ in prompts]
+
+    monkeypatch.setattr(
+        eval,
+        "load_math_source",
+        lambda source: iter(
+            [
+                {
+                    "problem": "What is 2 + 2?",
+                    "solution": None,
+                    "answer": "4",
+                    "source": "fixture",
+                }
+            ]
+        ),
+    )
+    config = {
+        "experiment": {"name": "truncated-eval"},
+        "eval": {
+            "protocol": "qwen2_5_math_base_zero_shot",
+            "output_dir": str(tmp_path),
+            "sample_seed": 42,
+            "shuffle_buffer_size": 100,
+            "batch_size": 1,
+            "save_predictions": True,
+            "wandb": {"enabled": False},
+            "generation": {
+                "max_new_tokens": 4,
+                "num_return_sequences": 1,
+                "do_sample": False,
+            },
+            "benchmarks": [
+                {
+                    "name": "gsm8k",
+                    "adapter": "fixture",
+                    "path": "fixture",
+                    "revision": "fixture",
+                    "split": "test",
+                }
+            ],
+        },
+    }
+
+    run_dir, summary = eval.eval_model(
+        TruncatedBackend(), FakeTokenizer(), config, model_name="fake-model"
+    )
+
+    with gzip.open(run_dir / "predictions.jsonl.gz", "rt") as file:
+        prediction = json.loads(file.readline())
+    assert prediction["truncated"] is True
+    assert prediction["extraction_method"] == "last_number"
+    assert prediction["extracted_answer"] == "4"
+    assert prediction["parsed"] is False
+    assert prediction["correct"] is False
+    assert summary["benchmarks"]["gsm8k"]["parse_rate"] == 0.0
+
+
 @pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
 def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path):
     def load(source):

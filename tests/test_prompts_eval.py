@@ -17,7 +17,11 @@ class RecordingTokenizer:
 def test_base_protocol_uses_published_shot_counts():
     assert get_eval_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
     assert get_eval_settings("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == ["Question:"]
+    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == [
+        "Question:",
+        "[Question]",
+        "\nQ:",
+    ]
 
 
 def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
@@ -93,7 +97,7 @@ def test_base_mmlu_prompt_uses_published_four_shots():
     settings = get_eval_settings("qwen2_5_math_base", "mmlu_stem")
     assert settings["num_shots"] == 4
     assert settings["answer_kind"] == "choice"
-    assert settings["stop_strings"] == ["Problem:"]
+    assert settings["stop_strings"] == ["Problem:", "[Problem]", "\nQ:"]
 
 
 def test_instruct_mmlu_prompt_uses_official_five_shots_in_one_user_turn():
