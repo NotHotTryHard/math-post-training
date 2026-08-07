@@ -21,7 +21,7 @@ def build_evaluation_prompt(
     if protocol == "qwen2_5_math_instruct":
         user_prompt = problem
         if benchmark == "mmlu_stem":
-            user_prompt = _mmlu_prompt(problem, demonstrations)
+            user_prompt = _mmlu_few_shot_prompt(problem, demonstrations)
         messages = [
             {"role": "system", "content": QWEN_INSTRUCT_SYSTEM},
             {"role": "user", "content": user_prompt},
@@ -35,13 +35,19 @@ def build_evaluation_prompt(
             raise TypeError("apply_chat_template(..., tokenize=False) must return str")
         return rendered
 
+    if protocol == "qwen2_5_math_base_zero_shot":
+        return _base_zero_shot_prompt(problem, benchmark)
+
+    if protocol == "qwen2_5_math_base_zero_shot_cot":
+        return _base_zero_shot_cot_prompt(problem, benchmark)
+
     if protocol == "qwen2_5_math_base":
         if benchmark in {"gsm8k", "gsm1k"}:
             return GSM8K_BASE_PREFIX + problem + "\nLet's think step by step"
         if benchmark == "math":
             return MATH_BASE_PREFIX + problem + "\nSolution:"
         if benchmark == "mmlu_stem":
-            return _mmlu_prompt(problem, demonstrations)
+            return _mmlu_few_shot_prompt(problem, demonstrations)
         raise ValueError(f"No Qwen Base prompt is defined for benchmark {benchmark!r}")
 
     raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
@@ -55,7 +61,10 @@ def get_evaluation_settings(protocol, benchmark, demonstrations=None):
 
     answer_kind = "choice" if benchmark == "mmlu_stem" else "math"
     num_shots = 0
-    if benchmark == "mmlu_stem":
+    if benchmark == "mmlu_stem" and protocol in {
+        "qwen2_5_math_instruct",
+        "qwen2_5_math_base",
+    }:
         if demonstrations is None:
             raise ValueError("MMLU-STEM evaluation requires dev demonstrations")
         num_shots = len(demonstrations)
@@ -84,10 +93,38 @@ def get_evaluation_settings(protocol, benchmark, demonstrations=None):
             "stop_strings": stop_strings,
         }
 
+    if protocol in {
+        "qwen2_5_math_base_zero_shot",
+        "qwen2_5_math_base_zero_shot_cot",
+    }:
+        stop_strings = ["Problem:"] if benchmark == "math" else ["Question:"]
+        return {
+            "num_shots": 0,
+            "answer_kind": answer_kind,
+            "required_answer_format": None,
+            "stop_strings": stop_strings,
+        }
+
     raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
 
 
-def _mmlu_prompt(problem, demonstrations):
+def _base_zero_shot_prompt(problem, benchmark):
+    label = "Problem" if benchmark == "math" else "Question"
+    return f"{label}: {problem}\nAnswer:"
+
+
+def _base_zero_shot_cot_prompt(problem, benchmark):
+    if benchmark == "math":
+        return f"Problem: {problem}\nSolution:"
+    if benchmark == "mmlu_stem":
+        return (
+            f"Question: {problem}\nLet's think step by step. "
+            "End with 'The answer is X', where X is A, B, C, or D."
+        )
+    return f"Question: {problem}\nLet's think step by step"
+
+
+def _mmlu_few_shot_prompt(problem, demonstrations):
     if not demonstrations:
         raise ValueError("MMLU-STEM evaluation requires dev demonstrations")
     prefix = "".join(

@@ -34,6 +34,35 @@ def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
     assert prompt.endswith("Question: What is 1 + 1?\nLet's think step by step")
 
 
+def test_base_zero_shot_prompt_asks_for_a_direct_answer():
+    prompt = build_evaluation_prompt(
+        RecordingTokenizer(),
+        "What is 1 + 1?",
+        benchmark="gsm8k",
+        protocol="qwen2_5_math_base_zero_shot",
+    )
+
+    assert prompt == "Question: What is 1 + 1?\nAnswer:"
+    assert (
+        get_evaluation_settings(
+            "qwen2_5_math_base_zero_shot",
+            "gsm8k",
+        )["num_shots"]
+        == 0
+    )
+
+
+def test_base_zero_shot_cot_prompt_adds_reasoning_cue():
+    prompt = build_evaluation_prompt(
+        RecordingTokenizer(),
+        "What is 1 + 1?",
+        benchmark="gsm8k",
+        protocol="qwen2_5_math_base_zero_shot_cot",
+    )
+
+    assert prompt == "Question: What is 1 + 1?\nLet's think step by step"
+
+
 def test_instruct_protocol_uses_chat_template_and_boxed_system_prompt():
     tokenizer = RecordingTokenizer()
     prompt = build_evaluation_prompt(

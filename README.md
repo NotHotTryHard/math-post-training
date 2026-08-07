@@ -74,21 +74,24 @@ model-evaluate --benchmark gsm8k
 `--batch-size`; это не меняет greedy-предсказания. `--max-new-tokens` полезен для ограниченного
 локального прогона, но уже меняет evaluation protocol и поэтому сохраняется в `summary.json`.
 
-Evaluation использует один из двух явных протоколов:
+Для исходных 1.5B checkpoints зафиксированы четыре полных baseline-конфига:
 
-```yaml
-evaluation:
-  protocol: qwen2_5_math_instruct
+```bash
+model-evaluate --config configs/evaluation/qwen2_5_1_5b_base_zero_shot.yaml
+model-evaluate --config configs/evaluation/qwen2_5_1_5b_base_zero_shot_cot.yaml
+model-evaluate --config configs/evaluation/qwen2_5_1_5b_base_few_shot_cot.yaml
+model-evaluate --config configs/evaluation/qwen2_5_1_5b_instruct.yaml
 ```
 
-`qwen2_5_math_base` использует raw 8-shot GSM8K/GSM1K prompt и raw 4-shot MATH prompt из
-Appendix B Qwen2.5-Math. `qwen2_5_math_instruct` использует zero-shot chat prompt с официальной
-CoT system instruction. Поэтому Base checkpoint запускается с первым протоколом, а Instruct
-или обученный на chat messages checkpoint — со вторым.
+Первые три запуска измеряют Base checkpoint с raw zero-shot, raw zero-shot+CoT и опубликованным
+few-shot+CoT prompt соответственно. Последний запускает Instruct checkpoint через chat template
+с официальной CoT system instruction. Published Base protocol содержит 8 GSM8K/GSM1K и 4 MATH
+demonstrations из Appendix B Qwen2.5-Math.
 
-MMLU-STEM остаётся 5-shot в обоих протоколах: пять фиксированных примеров каждого subject
-загружаются из его `dev`, а метрика считается на `test`. Это единственный prompt, prefix которого
-собирается динамически, потому что demonstrations различаются между subject.
+В двух zero-shot Base-конфигах MMLU-STEM тоже запускается zero-shot. В published Base и Instruct
+конфигах он запускается 5-shot: пять фиксированных примеров каждого subject загружаются из его
+`dev`, а метрика считается на `test`. Это единственный prompt, prefix которого собирается
+динамически, потому что demonstrations различаются между subject.
 
 MMLU-STEM здесь измеряется генерацией ответа и exact-match по букве A–D. Это удобно для общего
 pipeline, но не следует сравнивать с MMLU-числами, полученными через log-likelihood scoring, без
@@ -113,6 +116,7 @@ model-evaluate --model outputs/checkpoints/my-model
 
 ```text
 configs/
+├── evaluation/          # Замороженные full-split baseline-прогоны.
 ├── config.example.yaml  # Полный пример конфигурации эксперимента.
 └── current.yaml         # Текущий локальный эксперимент.
 
