@@ -21,6 +21,11 @@ class FakeBackend:
         return [["The answer is four. #### 4"] for _ in prompts]
 
 
+class FakeChoiceBackend:
+    def generate(self, prompts, config):
+        return [["After checking the options, the answer is C."] for _ in prompts]
+
+
 def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
     monkeypatch.setattr(
         evaluation,
@@ -71,6 +76,7 @@ def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_p
     with gzip.open(run_dir / "predictions.jsonl.gz", "rt") as file:
         prediction = json.loads(file.readline())
     assert prediction["correct"] is True
+    assert prediction["extraction_method"] == "delimiter"
 
 
 def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
@@ -134,3 +140,93 @@ def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
 
     assert seen[0]["shuffle_seed"] == 123
     assert seen[0]["shuffle_buffer_size"] == 456
+
+
+def test_mmlu_few_shots_are_loaded_from_each_subject_dev_split(monkeypatch):
+    seen = []
+
+    def load(source):
+        seen.append(source)
+        return iter(
+            {
+                "problem": f"demo {index}",
+                "solution": None,
+                "answer": "A",
+                "source": f"cais/mmlu:{source['subset']}",
+            }
+            for index in range(5)
+        )
+
+    monkeypatch.setattr(evaluation, "load_math_source", load)
+    benchmark = {
+        "name": "mmlu_stem",
+        "adapter": "mmlu",
+        "path": "cais/mmlu",
+        "revision": "fixture",
+        "split": "test",
+        "few_shot_split": "dev",
+        "num_few_shots": 5,
+        "subsets": ["abstract_algebra", "anatomy"],
+    }
+
+    demonstrations = evaluation._load_few_shot_demonstrations(benchmark)
+
+    assert set(demonstrations) == {"abstract_algebra", "anatomy"}
+    assert all(len(examples) == 5 for examples in demonstrations.values())
+    assert {source["split"] for source in seen} == {"dev"}
+
+
+def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path):
+    def load(source):
+        count = 5 if source["split"] == "dev" else 1
+        return iter(
+            {
+                "problem": f"question {index}\nA. one\nB. two\nC. three\nD. four",
+                "solution": None,
+                "answer": "C",
+                "source": "cais/mmlu:abstract_algebra",
+            }
+            for index in range(count)
+        )
+
+    monkeypatch.setattr(evaluation, "load_math_source", load)
+    config = {
+        "experiment": {"name": "mmlu-eval"},
+        "evaluation": {
+            "protocol": "qwen2_5_math_base",
+            "output_dir": str(tmp_path),
+            "sample_seed": 42,
+            "shuffle_buffer_size": 100,
+            "batch_size": 1,
+            "save_predictions": False,
+            "generation": {
+                "max_new_tokens": 32,
+                "num_return_sequences": 1,
+                "do_sample": False,
+            },
+            "benchmarks": [
+                {
+                    "name": "mmlu_stem",
+                    "adapter": "mmlu",
+                    "path": "cais/mmlu",
+                    "revision": "fixture",
+                    "split": "test",
+                    "few_shot_split": "dev",
+                    "num_few_shots": 5,
+                    "subsets": ["abstract_algebra"],
+                }
+            ],
+        },
+    }
+
+    _, summary = evaluation.evaluate_model(
+        FakeChoiceBackend(),
+        FakeTokenizer(),
+        config,
+        model_name="fake-model",
+    )
+
+    result = summary["benchmarks"]["mmlu_stem"]
+    assert result["accuracy"] == 1.0
+    assert result["num_shots"] == 5
+    assert result["extraction_methods"] == {"answer_marker": 1}

@@ -1,8 +1,7 @@
 """Published Qwen2.5-Math evaluation prompt protocols.
 
-The Base prompts below are transcribed from Appendix B of the Qwen2.5-Math
-technical report. They are deliberately kept in Python: these are fixed pieces
-of an evaluation protocol, not experiment prose that should drift in YAML.
+GSM8K and MATH use the fixed prompts from Appendix B of the technical report.
+MMLU uses five dev examples from the subject currently being evaluated.
 """
 
 # ruff: noqa: E501 -- line wrapping would change the frozen prompt text
@@ -10,13 +9,22 @@ of an evaluation protocol, not experiment prose that should drift in YAML.
 QWEN_INSTRUCT_SYSTEM = "Please reason step by step, and put your final answer within \\boxed{}."
 
 
-def build_evaluation_prompt(tokenizer, problem, benchmark, protocol):
+def build_evaluation_prompt(
+    tokenizer,
+    problem,
+    benchmark,
+    protocol,
+    demonstrations=None,
+):
     """Return the exact string sent to the model for one benchmark problem."""
 
     if protocol == "qwen2_5_math_instruct":
+        user_prompt = problem
+        if benchmark == "mmlu_stem":
+            user_prompt = _mmlu_prompt(problem, demonstrations)
         messages = [
             {"role": "system", "content": QWEN_INSTRUCT_SYSTEM},
-            {"role": "user", "content": problem},
+            {"role": "user", "content": user_prompt},
         ]
         rendered = tokenizer.apply_chat_template(
             messages,
@@ -32,34 +40,61 @@ def build_evaluation_prompt(tokenizer, problem, benchmark, protocol):
             return GSM8K_BASE_PREFIX + problem + "\nLet's think step by step"
         if benchmark == "math":
             return MATH_BASE_PREFIX + problem + "\nSolution:"
+        if benchmark == "mmlu_stem":
+            return _mmlu_prompt(problem, demonstrations)
         raise ValueError(f"No Qwen Base prompt is defined for benchmark {benchmark!r}")
 
     raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
 
 
-def get_evaluation_settings(protocol, benchmark):
+def get_evaluation_settings(protocol, benchmark, demonstrations=None):
     """Return generation and answer-parsing settings fixed by the protocol."""
+
+    if benchmark not in {"gsm8k", "gsm1k", "math", "mmlu_stem"}:
+        raise ValueError(f"No evaluation settings are defined for benchmark {benchmark!r}")
+
+    answer_kind = "choice" if benchmark == "mmlu_stem" else "math"
+    num_shots = 0
+    if benchmark == "mmlu_stem":
+        if demonstrations is None:
+            raise ValueError("MMLU-STEM evaluation requires dev demonstrations")
+        num_shots = len(demonstrations)
 
     if protocol == "qwen2_5_math_instruct":
         return {
-            "num_shots": 0,
-            "answer_format": "boxed",
+            "num_shots": num_shots,
+            "answer_kind": answer_kind,
+            "required_answer_format": "boxed" if answer_kind == "math" else None,
             "stop_strings": None,
         }
+
     if protocol == "qwen2_5_math_base":
         if benchmark in {"gsm8k", "gsm1k"}:
-            return {
-                "num_shots": 8,
-                "answer_format": None,
-                "stop_strings": ["Question:"],
-            }
-        if benchmark == "math":
-            return {
-                "num_shots": 4,
-                "answer_format": None,
-                "stop_strings": ["Problem:"],
-            }
-    raise ValueError(f"Unknown protocol/benchmark pair: {protocol!r}/{benchmark!r}")
+            num_shots = 8
+            stop_strings = ["Question:"]
+        elif benchmark == "math":
+            num_shots = 4
+            stop_strings = ["Problem:"]
+        else:
+            stop_strings = ["Question:"]
+        return {
+            "num_shots": num_shots,
+            "answer_kind": answer_kind,
+            "required_answer_format": None,
+            "stop_strings": stop_strings,
+        }
+
+    raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
+
+
+def _mmlu_prompt(problem, demonstrations):
+    if not demonstrations:
+        raise ValueError("MMLU-STEM evaluation requires dev demonstrations")
+    prefix = "".join(
+        f"Question: {example['problem']}\nAnswer: {example['answer']}\n"
+        for example in demonstrations
+    )
+    return prefix + f"Question: {problem}\nAnswer:"
 
 
 # Fixed demonstrations from the paper live below the executable prompt logic.

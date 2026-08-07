@@ -1,18 +1,45 @@
 """Extract the final-answer part of a model completion."""
 
+import re
 
-def extract_final_answer(completion, delimiter="####", answer_format=None):
-    """Extract an explicitly formatted answer, or return the whole completion."""
+ANSWER_MARKER = re.compile(r"(?:the\s+answer|final\s+answer)\s+is\s*:?", re.IGNORECASE)
+NUMBER = re.compile(r"-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:[eE][+-]?\d+)?%?")
+CHOICE = re.compile(r"(?<![A-Za-z])[A-D](?![A-Za-z])", re.IGNORECASE)
 
-    if answer_format == "boxed":
-        boxed = extract_last_boxed(completion)
-        if boxed is not None:
-            return boxed
+
+def extract_final_answer(completion, *, answer_kind="math", delimiter="####"):
+    """Extract one answer and report which rule found it.
+
+    Explicit formats win. The final-number/final-choice rule is intentionally a
+    last-resort heuristic, and its use is recorded in evaluation outputs.
+    """
+
+    boxed = extract_last_boxed(completion)
+    if boxed is not None:
+        return boxed, "boxed"
 
     _, found, answer = completion.rpartition(delimiter)
-    if found:
-        return answer.strip()
-    return completion.strip()
+    if found and answer.strip():
+        return _first_answer_line(answer), "delimiter"
+
+    markers = list(ANSWER_MARKER.finditer(completion))
+    if markers:
+        answer = _first_answer_line(completion[markers[-1].end() :])
+        if answer:
+            return answer, "answer_marker"
+
+    if answer_kind == "choice":
+        choices = CHOICE.findall(completion)
+        if choices:
+            return choices[-1].upper(), "last_choice"
+    elif answer_kind == "math":
+        numbers = NUMBER.findall(completion)
+        if numbers:
+            return numbers[-1].replace(",", ""), "last_number"
+    else:
+        raise ValueError(f"Unknown answer kind: {answer_kind!r}")
+
+    return "", "not_found"
 
 
 def follows_answer_format(completion, delimiter="####", answer_format="delimiter"):
@@ -47,3 +74,9 @@ def extract_last_boxed(text):
             if depth == 0:
                 return text[content_start:index].strip()
     return None
+
+
+def _first_answer_line(text):
+    """Return the first non-empty line after an explicit answer marker."""
+
+    return next((line.strip() for line in text.splitlines() if line.strip()), "")

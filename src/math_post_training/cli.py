@@ -97,7 +97,6 @@ def _evaluate_parser():
         dest="benchmarks",
         help="run only this benchmark; repeat to select several",
     )
-    parser.add_argument("--protocol", help="override evaluation.protocol")
     parser.add_argument("--output-dir", type=Path)
     return parser
 
@@ -106,8 +105,6 @@ def evaluate_main(argv=None):
     args = _evaluate_parser().parse_args(argv)
     config = load_yaml_config(args.config)
 
-    if args.protocol is not None:
-        config["evaluation"]["protocol"] = args.protocol
     if args.batch_size is not None:
         config["evaluation"]["batch_size"] = args.batch_size
     if args.max_new_tokens is not None:

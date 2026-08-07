@@ -1,3 +1,5 @@
+import pytest
+
 from math_post_training.prompts.evaluation import (
     build_evaluation_prompt,
     get_evaluation_settings,
@@ -15,7 +17,9 @@ class RecordingTokenizer:
 def test_base_protocol_uses_published_shot_counts():
     assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
     assert get_evaluation_settings("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == ["Question:"]
+    assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == [
+        "Question:"
+    ]
 
 
 def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
@@ -40,7 +44,43 @@ def test_instruct_protocol_uses_chat_template_and_boxed_system_prompt():
     )
 
     assert prompt == "rendered prompt"
-    messages = tokenizer.messages
-    assert messages[0]["role"] == "system"
-    assert r"\boxed{}" in messages[0]["content"]
-    assert messages[1] == {"role": "user", "content": "What is 1 + 1?"}
+    assert tokenizer.messages[0]["role"] == "system"
+    assert r"\boxed{}" in tokenizer.messages[0]["content"]
+    assert tokenizer.messages[1] == {"role": "user", "content": "What is 1 + 1?"}
+
+
+def test_mmlu_prompt_adds_subject_dev_examples():
+    demonstrations = [
+        {
+            "problem": "Demo\nA. one\nB. two\nC. three\nD. four",
+            "answer": "B",
+        }
+    ]
+    prompt = build_evaluation_prompt(
+        RecordingTokenizer(),
+        "Target\nA. one\nB. two\nC. three\nD. four",
+        benchmark="mmlu_stem",
+        protocol="qwen2_5_math_base",
+        demonstrations=demonstrations,
+    )
+
+    assert prompt.startswith("Question: Demo")
+    assert "Answer: B" in prompt
+    assert prompt.endswith("D. four\nAnswer:")
+    settings = get_evaluation_settings(
+        "qwen2_5_math_base",
+        "mmlu_stem",
+        demonstrations,
+    )
+    assert settings["num_shots"] == 1
+    assert settings["answer_kind"] == "choice"
+
+
+def test_mmlu_requires_dev_examples():
+    with pytest.raises(ValueError, match="requires dev demonstrations"):
+        build_evaluation_prompt(
+            RecordingTokenizer(),
+            "question",
+            benchmark="mmlu_stem",
+            protocol="qwen2_5_math_base",
+        )

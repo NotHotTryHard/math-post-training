@@ -14,6 +14,7 @@ from math_post_training.prompts.evaluation import (
     build_evaluation_prompt,
     get_evaluation_settings,
 )
+from math_post_training.verifiers.choice import check_choice_answer
 from math_post_training.verifiers.extraction import extract_final_answer, follows_answer_format
 from math_post_training.verifiers.math import check_answer
 
@@ -96,7 +97,9 @@ def _evaluate_benchmark(
 ):
     name = benchmark["name"]
     started_at = time.perf_counter()
-    settings = get_evaluation_settings(protocol, name)
+    few_shots = _load_few_shot_demonstrations(benchmark)
+    settings_demonstrations = next(iter(few_shots.values()), None)
+    settings = get_evaluation_settings(protocol, name, settings_demonstrations)
     benchmark_generation = replace(generation, stop_strings=settings["stop_strings"])
     metrics = _empty_metrics()
     examples = _benchmark_examples(
@@ -113,6 +116,7 @@ def _evaluate_benchmark(
                 example["problem"],
                 benchmark=name,
                 protocol=protocol,
+                demonstrations=_demonstrations_for(example, few_shots),
             )
             for example in batch
         ]
@@ -120,17 +124,17 @@ def _evaluate_benchmark(
 
         for example, generated in zip(batch, completions, strict=True):
             completion = generated[0]
-            prediction = extract_final_answer(
+            prediction, extraction_method = extract_final_answer(
                 completion,
-                answer_format=settings["answer_format"],
+                answer_kind=settings["answer_kind"],
             )
-            parsed, correct = check_answer(
-                example["answer"],
-                prediction,
-            )
+            if settings["answer_kind"] == "choice":
+                parsed, correct = check_choice_answer(example["answer"], prediction)
+            else:
+                parsed, correct = check_answer(example["answer"], prediction)
             format_ok = follows_answer_format(
                 completion,
-                answer_format=settings["answer_format"],
+                answer_format=settings["required_answer_format"],
             )
             completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
 
@@ -142,6 +146,7 @@ def _evaluate_benchmark(
                 "reference_answer": example["answer"],
                 "completion": completion,
                 "extracted_answer": prediction,
+                "extraction_method": extraction_method,
                 "parsed": parsed,
                 "correct": correct,
                 "format_ok": format_ok,
@@ -182,6 +187,42 @@ def _evaluate_benchmark(
         f"parse_rate={result['parse_rate']:.3f}, format_rate={format_text}"
     )
     return result
+
+
+def _load_few_shot_demonstrations(benchmark):
+    """Load subject-specific demonstrations when a benchmark provides them."""
+
+    if "few_shot_split" not in benchmark:
+        return {}
+
+    count = benchmark.get("num_few_shots", 5)
+    if count < 1:
+        raise ValueError("num_few_shots must be positive")
+
+    demonstrations = {}
+    for subset in benchmark.get("subsets", [benchmark.get("subset")]):
+        source = {
+            "adapter": benchmark["adapter"],
+            "path": benchmark["path"],
+            "revision": benchmark["revision"],
+            "split": benchmark["few_shot_split"],
+            "subset": subset,
+            "streaming": benchmark.get("streaming", True),
+        }
+        demonstrations[subset] = list(islice(load_math_source(source), count))
+        if len(demonstrations[subset]) != count:
+            raise ValueError(
+                f"Benchmark {benchmark['name']!r}/{subset!r} provides only "
+                f"{len(demonstrations[subset])} of {count} requested few-shot examples"
+            )
+    return demonstrations
+
+
+def _demonstrations_for(example, few_shots):
+    if not few_shots:
+        return None
+    subset = example["source"].rsplit(":", 1)[-1]
+    return few_shots[subset]
 
 
 def _benchmark_examples(benchmark, cli_limit, *, sample_seed, shuffle_buffer_size):
@@ -251,6 +292,7 @@ def _empty_metrics():
         "truncated": 0,
         "completion_tokens": 0,
         "by_source": {},
+        "extraction_methods": {},
     }
 
 
@@ -263,6 +305,8 @@ def _update_metrics(metrics, record):
         metrics["formatted"] += int(record["format_ok"])
     metrics["truncated"] += int(record["truncated"])
     metrics["completion_tokens"] += record["completion_tokens"]
+    method = record["extraction_method"]
+    metrics["extraction_methods"][method] = metrics["extraction_methods"].get(method, 0) + 1
 
     source = metrics["by_source"].setdefault(record["source"], {"total": 0, "correct": 0})
     source["total"] += 1
@@ -281,6 +325,7 @@ def _finish_metrics(metrics):
         ),
         "truncated": metrics["truncated"],
         "mean_completion_tokens": metrics["completion_tokens"] / total,
+        "extraction_methods": metrics["extraction_methods"],
     }
 
     if len(metrics["by_source"]) > 1:

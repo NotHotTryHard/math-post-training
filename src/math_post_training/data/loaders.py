@@ -6,6 +6,7 @@ from math_post_training.data.sources import (
     gsm1k,
     gsm8k,
     hendrycks_math,
+    mmlu,
     open_math_instruct_2,
 )
 
@@ -13,6 +14,7 @@ NORMALIZERS = {
     "gsm1k": gsm1k.normalize,
     "gsm8k": gsm8k.normalize,
     "hendrycks_math": hendrycks_math.normalize,
+    "mmlu": mmlu.normalize,
     "open_math_instruct_2": open_math_instruct_2.normalize,
 }
 

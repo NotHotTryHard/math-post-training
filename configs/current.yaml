@@ -29,9 +29,6 @@ inference:
 
 evaluation:
   backend: transformers
-  # Official Qwen2.5-Math zero-shot CoT prompt for Instruct checkpoints.
-  # Use qwen2_5_math_base with Qwen/Qwen2.5-1.5B to reproduce the paper's
-  # fixed 8-shot GSM8K and 4-shot MATH Base protocol.
   protocol: qwen2_5_math_instruct
   output_dir: outputs/evaluations
   sample_seed: 42
@@ -76,3 +73,32 @@ evaluation:
       revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
       split: test
       streaming: true
+
+    - name: mmlu_stem
+      adapter: mmlu
+      path: cais/mmlu
+      revision: c30699e8356da336a370243923dbaf21066bb9fe
+      split: test
+      few_shot_split: dev
+      num_few_shots: 5
+      streaming: true
+      subsets:
+        - abstract_algebra
+        - anatomy
+        - astronomy
+        - college_biology
+        - college_chemistry
+        - college_computer_science
+        - college_mathematics
+        - college_physics
+        - computer_security
+        - conceptual_physics
+        - electrical_engineering
+        - elementary_mathematics
+        - high_school_biology
+        - high_school_chemistry
+        - high_school_computer_science
+        - high_school_mathematics
+        - high_school_physics
+        - high_school_statistics
+        - machine_learning

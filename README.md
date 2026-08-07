@@ -61,33 +61,40 @@ model-evaluate --limit 10
 ```
 
 `--limit 10` — быстрый локальный прогон десяти примеров из каждого benchmark. Без этого флага
-используются полные test splits GSM8K, GSM1k и MATH. Один benchmark можно
+используются полные test splits GSM8K, GSM1k, MATH и MMLU-STEM. Один benchmark можно
 выбрать отдельно (флаг разрешено повторять):
 
 ```bash
 model-evaluate --benchmark gsm8k
 ```
 
-Для MATH ограниченная выборка набирается round-robin по всем семи категориям, а не только из
-первой категории `algebra`. Перед limited-run строки детерминированно перемешиваются с
+Для MATH и MMLU-STEM ограниченная выборка набирается round-robin по категориям, а не только из
+первой. Перед limited-run строки детерминированно перемешиваются с
 `evaluation.sample_seed`, поэтому это не просто первые N строк. Размер батча для конкретной машины можно подобрать через
 `--batch-size`; это не меняет greedy-предсказания. `--max-new-tokens` полезен для ограниченного
 локального прогона, но уже меняет evaluation protocol и поэтому сохраняется в `summary.json`.
 
-`evaluation.protocol: qwen2_5_math_instruct` воспроизводит официальный zero-shot CoT prompt с
-ответом в `\\boxed{}`. Для Base checkpoint используется опубликованный few-shot протокол:
+Evaluation использует один из двух явных протоколов:
 
-```bash
-model-evaluate \
-  --model Qwen/Qwen2.5-1.5B \
-  --protocol qwen2_5_math_base \
-  --benchmark gsm8k
+```yaml
+evaluation:
+  protocol: qwen2_5_math_instruct
 ```
 
-Это фиксированные примеры из Appendix B Qwen2.5-Math: 8-shot для GSM8K/GSM1k и 4-shot для
-MATH. В `summary.json` сохраняются protocol, число shots, dataset
-revision и `is_full_split`; сравнивать с опубликованной таблицей можно только полный split с тем
-же протоколом. Для проверки другого checkpoint:
+`qwen2_5_math_base` использует raw 8-shot GSM8K/GSM1K prompt и raw 4-shot MATH prompt из
+Appendix B Qwen2.5-Math. `qwen2_5_math_instruct` использует zero-shot chat prompt с официальной
+CoT system instruction. Поэтому Base checkpoint запускается с первым протоколом, а Instruct
+или обученный на chat messages checkpoint — со вторым.
+
+MMLU-STEM остаётся 5-shot в обоих протоколах: пять фиксированных примеров каждого subject
+загружаются из его `dev`, а метрика считается на `test`. Это единственный prompt, prefix которого
+собирается динамически, потому что demonstrations различаются между subject.
+
+MMLU-STEM здесь измеряется генерацией ответа и exact-match по букве A–D. Это удобно для общего
+pipeline, но не следует сравнивать с MMLU-числами, полученными через log-likelihood scoring, без
+проверки совпадения протоколов.
+
+Для проверки другого checkpoint достаточно заменить веса, не создавая новый evaluator:
 
 ```bash
 model-evaluate --model outputs/checkpoints/my-model
@@ -96,6 +103,11 @@ model-evaluate --model outputs/checkpoints/my-model
 Каждый запуск создаёт `summary.json` с метриками. Если `evaluation.save_predictions` включён,
 рядом сохраняется `predictions.jsonl.gz`: сжатые задачи, ответы и результаты проверки нужны для
 разбора ошибок и обычно занимают мегабайты или десятки мегабайт, а не гигабайты.
+
+Ответ извлекается каскадом: последнее `\\boxed{}`, затем `####`, затем последний явный маркер
+`The answer is`/`final answer is`. Только если модель не соблюла ни один формат, используется
+эвристика последнего числа или последней A–D буквы. Поле `extraction_method` позволяет отдельно
+увидеть такие fallback-ответы; в summary сохраняется их распределение.
 
 ## Структура
 
@@ -110,20 +122,21 @@ src/math_post_training/
 ├── model.py             # Общая загрузка model/tokenizer из HF или checkpoint-а.
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── inference.py     # Prompt для ручного model-generate.
-│   └── evaluation.py    # Instruct/Base evaluation prompts и их settings.
+│   └── evaluation.py    # Явные Qwen Base/Instruct evaluation protocols.
 ├── evaluation.py        # Evaluation loop и метрики.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
 │   ├── loaders.py       # Загрузка, sampling и нормализация датасета.
 │   ├── preprocessing.py # SFT- и GRPO-представления одного MathExample.
-│   └── sources/         # Отдельный адаптер исходных колонок каждого датасета.
+│   └── sources/         # Адаптеры GSM8K, MATH, MMLU и training datasets.
 ├── generation/
 │   ├── base.py          # Общий контракт и backend-neutral параметры.
 │   ├── transformers.py  # Адаптер для transformers.generate.
 │   └── vllm.py          # Явная заглушка будущего vLLM backend-а.
 └── verifiers/
     ├── extraction.py    # Извлечение финального ответа из completion.
-    └── math.py          # Numeric/symbolic equivalence через Math-Verify.
+    ├── math.py          # Numeric/symbolic equivalence через Math-Verify.
+    └── choice.py        # Exact-match для multiple-choice ответов.
 ```
 
 Пустых `training.py` и `rewards.py` пока намеренно нет: они появятся вместе с первой рабочей SFT

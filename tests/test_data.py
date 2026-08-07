@@ -7,6 +7,7 @@ from math_post_training.data.sources import (
     gsm1k,
     gsm8k,
     hendrycks_math,
+    mmlu,
     open_math_instruct_2,
 )
 
@@ -59,6 +60,21 @@ def test_math_normalization_extracts_nested_boxed_answer():
 
     assert example.answer == r"\frac{1}{2}"
     assert example.source == "EleutherAI/hendrycks_math:prealgebra"
+
+
+def test_mmlu_normalization_renders_choices_and_answer_letter():
+    example = mmlu.normalize(
+        {
+            "question": "What is 2 + 2?",
+            "choices": ["1", "2", "4", "8"],
+            "answer": 2,
+            "subject": "elementary_mathematics",
+        }
+    )
+
+    assert example.problem == "What is 2 + 2?\nA. 1\nB. 2\nC. 4\nD. 8"
+    assert example.answer == "C"
+    assert example.source == "cais/mmlu:elementary_mathematics"
 
 
 def test_sft_and_grpo_use_different_parts_of_the_same_example():
