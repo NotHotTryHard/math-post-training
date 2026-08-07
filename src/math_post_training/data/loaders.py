@@ -1,6 +1,6 @@
 """Load and normalize mathematical datasets."""
 
-from datasets import interleave_datasets, load_dataset
+from datasets import Features, Value, interleave_datasets, load_dataset
 
 from math_post_training.data.sources import (
     gsm1k,
@@ -17,6 +17,15 @@ NORMALIZERS = {
     "mmlu": mmlu.normalize,
     "open_math_instruct_2": open_math_instruct_2.normalize,
 }
+
+NORMALIZED_FEATURES = Features(
+    {
+        "problem": Value("string"),
+        "solution": Value("string"),
+        "answer": Value("string"),
+        "source": Value("string"),
+    }
+)
 
 
 def load_math_dataset(config):
@@ -78,4 +87,8 @@ def load_math_source(config):
     def normalize(row):
         return vars(normalizer(row))
 
-    return dataset.map(normalize, remove_columns=original_columns)
+    return dataset.map(
+        normalize,
+        remove_columns=original_columns,
+        features=NORMALIZED_FEATURES,
+    )

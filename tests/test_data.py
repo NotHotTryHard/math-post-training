@@ -1,5 +1,5 @@
 import pytest
-from datasets import IterableDataset
+from datasets import ClassLabel, Dataset, IterableDataset
 
 from math_post_training.data import loaders
 from math_post_training.data.preprocessing import to_grpo_example, to_sft_example
@@ -75,6 +75,30 @@ def test_mmlu_normalization_renders_choices_and_answer_letter():
     assert example.problem == "What is 2 + 2?\nA. 1\nB. 2\nC. 4\nD. 8"
     assert example.answer == "C"
     assert example.source == "cais/mmlu:elementary_mathematics"
+
+
+def test_loader_does_not_reencode_normalized_mmlu_answer_as_class_label(monkeypatch):
+    source = Dataset.from_dict(
+        {
+            "question": ["What is 2 + 2?"],
+            "choices": [["1", "2", "4", "8"]],
+            "answer": [2],
+            "subject": ["elementary_mathematics"],
+        }
+    ).cast_column("answer", ClassLabel(names=list("ABCD")))
+    monkeypatch.setattr(loaders, "load_dataset", lambda *args, **kwargs: source)
+
+    dataset = loaders.load_math_source(
+        {
+            "adapter": "mmlu",
+            "path": "cais/mmlu",
+            "revision": "fixture",
+            "split": "test",
+        }
+    )
+
+    assert dataset.features["answer"].dtype == "string"
+    assert dataset[0]["answer"] == "C"
 
 
 def test_sft_and_grpo_use_different_parts_of_the_same_example():
