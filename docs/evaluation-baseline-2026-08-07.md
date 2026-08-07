@@ -15,12 +15,12 @@ Instruct-модель оценивалась с протоколом `qwen2_5_ma
 
 ## Результаты
 
-| Model | Benchmark | Scope | Correct | Accuracy | 95% Wilson CI | Parse | Format | Truncated |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| Qwen2.5-1.5B-Instruct | GSM8K | full 1319 | 922 | 69.90% | 67.37–72.32% | 99.47% | 91.58% | 58 (4.40%) |
-| Qwen2.5-1.5B-Instruct | GSM1k | seeded 200 | 135 | 67.50% | 60.73–73.61% | 100.00% | 87.50% | 13 (6.50%) |
-| Qwen2.5-1.5B-Instruct | MATH | seeded 140 | 44 | 31.43% | 24.32–39.53% | 97.86% | 47.86% | 74 (52.86%) |
-| Qwen2.5-1.5B Base | GSM8K | seeded 100 | 69 | 69.00% | 59.37–77.22% | 100.00% | n/a | 1 (1.00%) |
+| Model                 | Benchmark | Scope      | Correct | Accuracy | 95% Wilson CI | Parse   | Format | Truncated   |
+|                       |           |            |         |          |               |         |        |             |
+| Qwen2.5-1.5B-Instruct | GSM8K     | full 1319  | 922     | 69.90%   | 67.37–72.32%  | 99.47%  | 91.58% | 58 (4.40%)  |
+| Qwen2.5-1.5B-Instruct | GSM1k     | seeded 200 | 135     | 67.50%   | 60.73–73.61%  | 100.00% | 87.50% | 13 (6.50%)  |
+| Qwen2.5-1.5B-Instruct | MATH      | seeded 140 | 44      | 31.43%   | 24.32–39.53%  | 97.86%  | 47.86% | 74 (52.86%) |
+| Qwen2.5-1.5B Base     | GSM8K     | seeded 100 | 69      | 69.00%   | 59.37–77.22%  | 100.00% | n/a    | 1 (1.00%)   |
 
 Limited runs сначала детерминированно перемешивают строки с `sample_seed=42`. MATH-140 также
 сбалансирован round-robin: по 20 задач из каждой из семи категорий.
