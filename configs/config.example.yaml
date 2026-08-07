@@ -1,6 +1,5 @@
 experiment:
-  name: qwen2.5-1.5b-grpo-mixed-math-2024-smoke
-  seed: 42
+  name: qwen2.5-1.5b-instruct-mixed-math-example
 
 model:
   name_or_path: Qwen/Qwen2.5-1.5B-Instruct
@@ -33,13 +32,7 @@ dataset:
       limit: 100
       probability: 0.1
 
-prompt:
-  system: >-
-    Solve the problem step by step. Put the final answer after ####.
-  answer_delimiter: "####"
-  use_chat_template: true
-
-generation:
+inference:
   backend: transformers
   max_new_tokens: 256
   num_return_sequences: 4
@@ -47,20 +40,6 @@ generation:
   temperature: 0.8
   top_p: 0.95
   seed: 42
-
-training:
-  algorithm: grpo
-  output_dir: outputs/qwen2.5-1.5b-grpo-mixed-math-2024-smoke
-  max_steps: 10
-  learning_rate: 1.0e-6
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 8
-  gradient_checkpointing: true
-  max_completion_length: 256
-  num_generations: 4
-  logging_steps: 1
-  save_strategy: "no"
-  use_vllm: false
 
 evaluation:
   backend: transformers
@@ -111,7 +90,3 @@ evaluation:
       revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
       split: test
       streaming: true
-
-tracking:
-  report_to: wandb
-  log_completions: true

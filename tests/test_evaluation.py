@@ -38,11 +38,6 @@ def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_p
     )
     config = {
         "experiment": {"name": "test-eval"},
-        "prompt": {
-            "system": "Solve the problem. Put the final answer after ####.",
-            "answer_delimiter": "####",
-            "use_chat_template": True,
-        },
         "evaluation": {
             "protocol": "qwen2_5_math_instruct",
             "output_dir": str(tmp_path),

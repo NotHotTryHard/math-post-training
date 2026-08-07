@@ -1,6 +1,5 @@
 experiment:
   name: qwen2.5-1.5b-instruct-baseline
-  seed: 42
 
 model:
   name_or_path: Qwen/Qwen2.5-1.5B-Instruct
@@ -8,8 +7,6 @@ model:
   trust_remote_code: false
 
 dataset:
-  seed: 42
-  stopping_strategy: all_exhausted_without_replacement
   sources:
     - adapter: gsm8k
       path: openai/gsm8k
@@ -20,15 +17,8 @@ dataset:
       shuffle_seed: 42
       shuffle_buffer_size: 10_000
       limit: 100
-      probability: 0.1
 
-prompt:
-  system: >-
-    Solve the problem step by step. Put the final answer after ####.
-  answer_delimiter: "####"
-  use_chat_template: true
-
-generation:
+inference:
   backend: transformers
   max_new_tokens: 256
   num_return_sequences: 4

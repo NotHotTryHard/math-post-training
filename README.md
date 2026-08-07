@@ -8,7 +8,7 @@ SFT с последующим GRPO для `Qwen/Qwen2.5-1.5B` на GSM8K.
 
 `configs/config.example.yaml` служит полным примером конфигурации со смесью источников, а
 `configs/current.yaml` — текущим локальным экспериментом с одним источником. Параметры модели,
-датасета, генерации и обучения хранятся в YAML; секреты и настройки конкретного W&B workspace
+датасета, ручного inference и evaluation хранятся в YAML; секреты и настройки конкретного W&B workspace
 берутся из окружения:
 
 - `HF_TOKEN` — доступ к Hugging Face;
@@ -21,16 +21,16 @@ revision, split, streaming и ограничение числа примеров
 за приведение его исходных колонок к общей math-схеме.
 
 `dataset.sources` используется и для одного источника, и для смеси. `limit` ограничивает число
-доступных строк конкретного источника после shuffle, а `probability` определяет вероятность
-выбрать этот источник при получении следующей строки смеси.
+доступных строк конкретного источника после shuffle. `probability` нужна только при нескольких
+источниках и определяет вероятность выбрать источник при получении следующей строки смеси.
 
 Для локальной разработки скопируй `.env.example` в `.env` и подставь свои значения. Сам файл
-`.env` игнорируется git. Код загрузки `.env` будет добавлен вместе с CLI; сами Transformers и
-W&B также умеют читать эти переменные окружения напрямую.
+`.env` игнорируется git. Конфиги обучения и W&B появятся тогда же, когда появится соответствующий
+training-код: сейчас YAML не притворяется, будто уже реализованные стадии существуют.
 
 ## Локальная генерация
 
-CLI использует модель и sampling-параметры из `configs/current.yaml`:
+CLI использует `model` и `inference` из `configs/current.yaml`:
 
 ```bash
 model-generate "If x + 3 = 7, what is x?"
@@ -41,6 +41,15 @@ model-generate "If x + 3 = 7, what is x?"
 ```bash
 model-generate --model Qwen/Qwen2.5-1.5B --raw "The answer to 2 + 2 is"
 ```
+
+Чтобы увидеть точную строку, которая будет передана tokenizer-у перед генерацией:
+
+```bash
+model-generate --show-prompt "Write a short story about a robot"
+```
+
+Логика построения этой строки целиком находится в `prompts/inference.py`; CLI только загружает
+модель, вызывает её и печатает completion.
 
 ## Evaluation
 
@@ -102,9 +111,7 @@ src/math_post_training/
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── inference.py     # Prompt для ручного model-generate.
 │   └── evaluation.py    # Instruct/Base evaluation prompts и их settings.
-├── rewards.py           # Reward-функции, используемые trainer-ом.
 ├── evaluation.py        # Evaluation loop и метрики.
-├── training.py          # SFT и GRPO training entry points.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
 │   ├── loaders.py       # Загрузка, sampling и нормализация датасета.
@@ -113,9 +120,11 @@ src/math_post_training/
 ├── generation/
 │   ├── base.py          # Общий контракт и backend-neutral параметры.
 │   ├── transformers.py  # Адаптер для transformers.generate.
-│   └── vllm.py          # Адаптер для vLLM с ленивым optional import.
+│   └── vllm.py          # Явная заглушка будущего vLLM backend-а.
 └── verifiers/
     ├── extraction.py    # Извлечение финального ответа из completion.
-    ├── math.py          # Numeric/symbolic equivalence через Math-Verify.
-    └── numeric.py       # Заготовка numeric-only verifier для rewards.
+    └── math.py          # Numeric/symbolic equivalence через Math-Verify.
 ```
+
+Пустых `training.py` и `rewards.py` пока намеренно нет: они появятся вместе с первой рабочей SFT
+стадией, чтобы наличие файла не создавало впечатление, будто за ним уже стоит реализованный путь.

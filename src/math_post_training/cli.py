@@ -32,6 +32,11 @@ def _generate_parser():
     parser.add_argument("--device", default="auto")
     parser.add_argument("--system")
     parser.add_argument("--raw", action="store_true", help="do not apply a chat template")
+    parser.add_argument(
+        "--show-prompt",
+        action="store_true",
+        help="print the rendered prompt before generation",
+    )
     return parser
 
 
@@ -43,7 +48,7 @@ def generate_main(argv=None):
     if args.model is not None:
         model_config["name_or_path"] = args.model
 
-    generation_config = dict(config["generation"])
+    generation_config = dict(config["inference"])
     backend_name = generation_config.pop("backend")
     if backend_name != "transformers":
         raise ValueError(
@@ -60,6 +65,11 @@ def generate_main(argv=None):
         system_prompt=args.system,
         raw=args.raw,
     )
+
+    if args.show_prompt:
+        print("=== prompt sent to model ===")
+        print(prompt)
+        print("=== completion ===")
 
     completions = backend.generate([prompt], GenerationConfig(**generation_config))[0]
     for index, completion in enumerate(completions, start=1):

@@ -18,11 +18,14 @@ def build_evaluation_prompt(tokenizer, problem, benchmark, protocol):
             {"role": "system", "content": QWEN_INSTRUCT_SYSTEM},
             {"role": "user", "content": problem},
         ]
-        return tokenizer.apply_chat_template(
+        rendered = tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True,
         )
+        if not isinstance(rendered, str):
+            raise TypeError("apply_chat_template(..., tokenize=False) must return str")
+        return rendered
 
     if protocol == "qwen2_5_math_base":
         if benchmark in {"gsm8k", "gsm1k"}:
