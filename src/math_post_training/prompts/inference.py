@@ -1,13 +1,17 @@
-"""Prompt construction and model chat-template helpers."""
+"""Build the prompt used by the interactive ``model-generate`` command."""
 
 
-def render_chat_prompt(
+def build_inference_prompt(
     tokenizer,
     user_prompt,
     *,
     system_prompt=None,
+    raw=False,
 ):
-    """Turn chat messages into the exact text expected by the model."""
+    """Return the exact string that the generation backend will tokenize."""
+
+    if raw:
+        return user_prompt
 
     messages = []
     if system_prompt is not None:

@@ -1,6 +1,6 @@
-from math_post_training.evaluation_prompts import (
-    protocol_metadata,
-    render_evaluation_prompt,
+from math_post_training.prompts.evaluation import (
+    build_evaluation_prompt,
+    get_evaluation_settings,
 )
 
 
@@ -12,13 +12,13 @@ class FakeTokenizer:
 
 
 def test_base_protocol_uses_published_shot_counts():
-    assert protocol_metadata("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
-    assert protocol_metadata("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert protocol_metadata("qwen2_5_math_base", "gsm8k")["stop_strings"] == ["Question:"]
+    assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
+    assert get_evaluation_settings("qwen2_5_math_base", "math")["num_shots"] == 4
+    assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == ["Question:"]
 
 
 def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
-    prompt = render_evaluation_prompt(
+    prompt = build_evaluation_prompt(
         FakeTokenizer(),
         "What is 1 + 1?",
         benchmark="gsm8k",
@@ -30,7 +30,7 @@ def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
 
 
 def test_instruct_protocol_uses_chat_template_and_boxed_system_prompt():
-    messages = render_evaluation_prompt(
+    messages = build_evaluation_prompt(
         FakeTokenizer(),
         "What is 1 + 1?",
         benchmark="gsm8k",

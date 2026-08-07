@@ -9,6 +9,58 @@ of an evaluation protocol, not experiment prose that should drift in YAML.
 
 QWEN_INSTRUCT_SYSTEM = "Please reason step by step, and put your final answer within \\boxed{}."
 
+
+def build_evaluation_prompt(tokenizer, problem, benchmark, protocol):
+    """Return the exact string sent to the model for one benchmark problem."""
+
+    if protocol == "qwen2_5_math_instruct":
+        messages = [
+            {"role": "system", "content": QWEN_INSTRUCT_SYSTEM},
+            {"role": "user", "content": problem},
+        ]
+        return tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
+    if protocol == "qwen2_5_math_base":
+        if benchmark in {"gsm8k", "gsm1k"}:
+            return GSM8K_BASE_PREFIX + problem + "\nLet's think step by step"
+        if benchmark == "math":
+            return MATH_BASE_PREFIX + problem + "\nSolution:"
+        raise ValueError(f"No Qwen Base prompt is defined for benchmark {benchmark!r}")
+
+    raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
+
+
+def get_evaluation_settings(protocol, benchmark):
+    """Return generation and answer-parsing settings fixed by the protocol."""
+
+    if protocol == "qwen2_5_math_instruct":
+        return {
+            "num_shots": 0,
+            "answer_format": "boxed",
+            "stop_strings": None,
+        }
+    if protocol == "qwen2_5_math_base":
+        if benchmark in {"gsm8k", "gsm1k"}:
+            return {
+                "num_shots": 8,
+                "answer_format": None,
+                "stop_strings": ["Question:"],
+            }
+        if benchmark == "math":
+            return {
+                "num_shots": 4,
+                "answer_format": None,
+                "stop_strings": ["Problem:"],
+            }
+    raise ValueError(f"Unknown protocol/benchmark pair: {protocol!r}/{benchmark!r}")
+
+
+# Fixed demonstrations from the paper live below the executable prompt logic.
+
 GSM8K_BASE_PREFIX = r"""Question: In 2004, there were 60 kids at a cookout. In 2005, half the number of kids came to the cookout as compared to 2004. In 2006, 2/3 as many kids came to the cookout as in 2005. How many kids came to the cookout in 2006?
 Let's think step by step
 In 2005, 60/2=30 kids came to the cookout.
@@ -72,52 +124,3 @@ Solution: If Terrell lifts two 20-pound weights 12 times, he lifts a total of $2
 Problem: If the system of equations $6x-4y=a,$ $6y-9x=b$ has a solution $(x,y)$ where $x$ and $y$ are both nonzero, find $\frac{a}{b},$ assuming $b$ is nonzero.
 Solution: If we multiply the first equation by $-\frac{3}{2}$, we obtain $6y-9x=-\frac{3}{2}a$. Since we also know that $6y-9x=b$, we have $-\frac{3}{2}a=b \Rightarrow \frac{a}{b}=\boxed{-\frac{2}{3}}$. The answer is: $-\frac{2}{3}$.
 Problem: """
-
-
-def render_evaluation_prompt(tokenizer, problem, benchmark, protocol):
-    """Render one prompt according to a named, frozen evaluation protocol."""
-
-    if protocol == "qwen2_5_math_instruct":
-        messages = [
-            {"role": "system", "content": QWEN_INSTRUCT_SYSTEM},
-            {"role": "user", "content": problem},
-        ]
-        return tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-        )
-
-    if protocol == "qwen2_5_math_base":
-        if benchmark in {"gsm8k", "gsm1k"}:
-            return GSM8K_BASE_PREFIX + problem + "\nLet's think step by step"
-        if benchmark == "math":
-            return MATH_BASE_PREFIX + problem + "\nSolution:"
-        raise ValueError(f"No Qwen Base prompt is defined for benchmark {benchmark!r}")
-
-    raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
-
-
-def protocol_metadata(protocol, benchmark):
-    """Return protocol facts that must accompany reported benchmark scores."""
-
-    if protocol == "qwen2_5_math_instruct":
-        return {
-            "num_shots": 0,
-            "answer_format": "boxed",
-            "stop_strings": None,
-        }
-    if protocol == "qwen2_5_math_base":
-        if benchmark in {"gsm8k", "gsm1k"}:
-            return {
-                "num_shots": 8,
-                "answer_format": None,
-                "stop_strings": ["Question:"],
-            }
-        if benchmark == "math":
-            return {
-                "num_shots": 4,
-                "answer_format": None,
-                "stop_strings": ["Problem:"],
-            }
-    raise ValueError(f"Unknown protocol/benchmark pair: {protocol!r}/{benchmark!r}")

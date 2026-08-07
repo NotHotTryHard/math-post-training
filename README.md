@@ -99,7 +99,9 @@ src/math_post_training/
 ├── cli.py               # Тонкая сборка model + prompt + generation для CLI.
 ├── config.py            # Загрузка YAML-конфигурации.
 ├── model.py             # Общая загрузка model/tokenizer из HF или checkpoint-а.
-├── prompts.py           # Chat template и построение математических prompts.
+├── prompts/             # Финальный model input, разнесённый по сценариям.
+│   ├── inference.py     # Prompt для ручного model-generate.
+│   └── evaluation.py    # Instruct/Base evaluation prompts и их settings.
 ├── rewards.py           # Reward-функции, используемые trainer-ом.
 ├── evaluation.py        # Evaluation loop и метрики.
 ├── training.py          # SFT и GRPO training entry points.

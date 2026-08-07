@@ -9,7 +9,7 @@ from math_post_training.config import load_yaml_config
 from math_post_training.generation.base import GenerationConfig
 from math_post_training.generation.transformers import TransformersBackend
 from math_post_training.model import load_model_and_tokenizer
-from math_post_training.prompts import render_chat_prompt
+from math_post_training.prompts.inference import build_inference_prompt
 
 DEFAULT_CONFIG_PATH = Path("configs/current.yaml")
 
@@ -54,9 +54,12 @@ def generate_main(argv=None):
     model, tokenizer = load_model_and_tokenizer(**model_config, device=device)
     backend = TransformersBackend(model, tokenizer, device)
 
-    prompt = args.prompt
-    if not args.raw:
-        prompt = render_chat_prompt(tokenizer, args.prompt, system_prompt=args.system)
+    prompt = build_inference_prompt(
+        tokenizer,
+        args.prompt,
+        system_prompt=args.system,
+        raw=args.raw,
+    )
 
     completions = backend.generate([prompt], GenerationConfig(**generation_config))[0]
     for index, completion in enumerate(completions, start=1):

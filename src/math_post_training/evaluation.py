@@ -9,11 +9,11 @@ from itertools import islice
 from pathlib import Path
 
 from math_post_training.data.loaders import load_math_source
-from math_post_training.evaluation_prompts import (
-    protocol_metadata,
-    render_evaluation_prompt,
-)
 from math_post_training.generation.base import GenerationConfig
+from math_post_training.prompts.evaluation import (
+    build_evaluation_prompt,
+    get_evaluation_settings,
+)
 from math_post_training.verifiers.extraction import extract_final_answer, follows_answer_format
 from math_post_training.verifiers.math import check_answer
 
@@ -96,8 +96,8 @@ def _evaluate_benchmark(
 ):
     name = benchmark["name"]
     started_at = time.perf_counter()
-    metadata = protocol_metadata(protocol, name)
-    benchmark_generation = replace(generation, stop_strings=metadata["stop_strings"])
+    settings = get_evaluation_settings(protocol, name)
+    benchmark_generation = replace(generation, stop_strings=settings["stop_strings"])
     metrics = _empty_metrics()
     examples = _benchmark_examples(
         benchmark,
@@ -108,7 +108,7 @@ def _evaluate_benchmark(
 
     for batch in _batched(examples, batch_size):
         prompts = [
-            render_evaluation_prompt(
+            build_evaluation_prompt(
                 tokenizer,
                 example["problem"],
                 benchmark=name,
@@ -122,7 +122,7 @@ def _evaluate_benchmark(
             completion = generated[0]
             prediction = extract_final_answer(
                 completion,
-                answer_format=metadata["answer_format"],
+                answer_format=settings["answer_format"],
             )
             parsed, correct = check_answer(
                 example["answer"],
@@ -130,7 +130,7 @@ def _evaluate_benchmark(
             )
             format_ok = follows_answer_format(
                 completion,
-                answer_format=metadata["answer_format"],
+                answer_format=settings["answer_format"],
             )
             completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
 
@@ -165,13 +165,13 @@ def _evaluate_benchmark(
     result.update(
         {
             "protocol": protocol,
-            "num_shots": metadata["num_shots"],
+            "num_shots": settings["num_shots"],
             "dataset": benchmark["path"],
             "revision": benchmark["revision"],
             "split": benchmark["split"],
             "is_full_split": selected_limit is None,
             "sample_seed": sample_seed if selected_limit is not None else None,
-            "stop_strings": metadata["stop_strings"],
+            "stop_strings": settings["stop_strings"],
             "elapsed_seconds": elapsed_seconds,
             "completion_tokens_per_second": metrics["completion_tokens"] / elapsed_seconds,
         }
