@@ -1,11 +1,17 @@
 import gzip
 import json
+import sys
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 pytest.importorskip("math_verify")
 
 from math_post_training import eval  # noqa: E402
+from math_post_training.config import load_yaml_config  # noqa: E402
+
+BASELINE_CONFIGS = sorted((Path(__file__).parents[1] / "configs" / "eval").glob("*.yaml"))
 
 
 class FakeTokenizer:
@@ -27,6 +33,32 @@ class FakeChoiceBackend:
 
 
 def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
+    class FakeTable:
+        def __init__(self, columns):
+            self.columns = columns
+            self.rows = []
+
+        def add_data(self, *row):
+            self.rows.append(row)
+
+    class FakeRun:
+        def __init__(self):
+            self.summary = {}
+            self.logged = []
+            self.exit_code = None
+
+        def log(self, data):
+            self.logged.append(data)
+
+        def finish(self, exit_code):
+            self.exit_code = exit_code
+
+    wandb_run = FakeRun()
+    monkeypatch.setitem(
+        sys.modules,
+        "wandb",
+        SimpleNamespace(init=lambda **kwargs: wandb_run, Table=FakeTable),
+    )
     monkeypatch.setattr(
         eval,
         "load_math_source",
@@ -43,6 +75,7 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
     )
     config = {
         "experiment": {"name": "test-eval"},
+        "model": {"name_or_path": "fake-model"},
         "eval": {
             "protocol": "qwen2_5_math_instruct",
             "output_dir": str(tmp_path),
@@ -50,6 +83,7 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
             "shuffle_buffer_size": 100,
             "batch_size": 1,
             "save_predictions": True,
+            "wandb": {"enabled": True, "log_predictions": True},
             "generation": {
                 "max_new_tokens": 32,
                 "num_return_sequences": 1,
@@ -77,6 +111,53 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
         prediction = json.loads(file.readline())
     assert prediction["correct"] is True
     assert prediction["extraction_method"] == "delimiter"
+    assert wandb_run.summary["eval/gsm8k/accuracy"] == 1.0
+    assert wandb_run.logged[-1]["eval/gsm8k/predictions"].rows
+    assert wandb_run.exit_code == 0
+
+
+@pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
+def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path):
+    def load(source):
+        count = 5 if source["split"] == "dev" else 1
+        subset = source.get("subset")
+        is_mmlu = source["adapter"] == "mmlu"
+        return iter(
+            {
+                "problem": (
+                    "Which option is correct?\nA. one\nB. two\nC. three\nD. four"
+                    if is_mmlu
+                    else "What is 2 + 2?"
+                ),
+                "solution": None,
+                "answer": "C" if is_mmlu else "4",
+                "source": f"{source['path']}:{subset}" if subset else source["path"],
+            }
+            for _ in range(count)
+        )
+
+    class ConfigBackend:
+        def generate(self, prompts, config):
+            return [
+                ["The answer is C." if "A. one" in prompt else "The answer is 4."]
+                for prompt in prompts
+            ]
+
+    monkeypatch.setattr(eval, "load_math_source", load)
+    config = load_yaml_config(config_path)
+    config["eval"]["wandb"]["enabled"] = False
+
+    _, summary = eval.eval_model(
+        ConfigBackend(),
+        FakeTokenizer(),
+        config,
+        model_name=config["model"]["name_or_path"],
+        limit=1,
+        output_dir=tmp_path,
+    )
+
+    assert set(summary["benchmarks"]) == {"gsm8k", "gsm1k", "math", "mmlu_stem"}
+    assert all(result["total"] == 1 for result in summary["benchmarks"].values())
 
 
 def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):

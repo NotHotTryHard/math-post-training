@@ -49,6 +49,9 @@ eval:
   shuffle_buffer_size: 10_000
   batch_size: 4
   save_predictions: true
+  wandb:
+    enabled: true
+    log_predictions: true
   generation:
     max_new_tokens: 2048
     num_return_sequences: 1

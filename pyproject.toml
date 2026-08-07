@@ -26,6 +26,8 @@ dev = [
 ]
 eval = [
     "math-verify[antlr4-13-2]>=0.9,<1",
+    "tqdm>=4.67,<5",
+    "wandb>=0.28,<0.29",
 ]
 train = [
     "accelerate>=1.14,<2",

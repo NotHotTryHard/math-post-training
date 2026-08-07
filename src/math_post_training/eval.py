@@ -2,11 +2,14 @@
 
 import gzip
 import json
+import os
 import time
 from dataclasses import replace
 from datetime import UTC, datetime
 from itertools import islice
 from pathlib import Path
+
+from tqdm import tqdm
 
 from math_post_training.data.loaders import load_math_source
 from math_post_training.generation.base import GenerationConfig
@@ -17,6 +20,22 @@ from math_post_training.prompts.eval import (
 from math_post_training.verifiers.choice import check_choice_answer
 from math_post_training.verifiers.extraction import extract_final_answer, follows_answer_format
 from math_post_training.verifiers.math import check_answer
+
+PREDICTION_COLUMNS = [
+    "benchmark",
+    "index",
+    "source",
+    "problem",
+    "reference_answer",
+    "completion",
+    "extracted_answer",
+    "extraction_method",
+    "parsed",
+    "correct",
+    "format_ok",
+    "completion_tokens",
+    "truncated",
+]
 
 
 def eval_model(
@@ -46,6 +65,15 @@ def eval_model(
     if eval_config.get("save_predictions", True):
         predictions_file = gzip.open(predictions_path, "wt", encoding="utf-8")
 
+    wandb_run, prediction_tables = _start_wandb_run(
+        config,
+        model_name=model_name,
+        protocol=protocol,
+        run_dir=run_dir,
+        limit=limit,
+        benchmark_names=benchmark_names,
+    )
+
     summary = {
         "experiment": config["experiment"]["name"],
         "model": model_name,
@@ -55,31 +83,40 @@ def eval_model(
         "benchmarks": {},
     }
 
+    exit_code = 1
     try:
-        selected = _select_benchmarks(eval_config["benchmarks"], benchmark_names)
-        for benchmark in selected:
-            result = _eval_benchmark(
-                backend,
-                tokenizer,
-                benchmark,
-                generation,
-                protocol=protocol,
-                batch_size=eval_config["batch_size"],
-                limit=limit,
-                sample_seed=eval_config["sample_seed"],
-                shuffle_buffer_size=eval_config["shuffle_buffer_size"],
-                predictions_file=predictions_file,
-            )
-            summary["benchmarks"][benchmark["name"]] = result
-    finally:
-        if predictions_file is not None:
-            predictions_file.close()
+        try:
+            selected = _select_benchmarks(eval_config["benchmarks"], benchmark_names)
+            for benchmark in selected:
+                result = _eval_benchmark(
+                    backend,
+                    tokenizer,
+                    benchmark,
+                    generation,
+                    protocol=protocol,
+                    batch_size=eval_config["batch_size"],
+                    limit=limit,
+                    sample_seed=eval_config["sample_seed"],
+                    shuffle_buffer_size=eval_config["shuffle_buffer_size"],
+                    predictions_file=predictions_file,
+                    predictions_table=prediction_tables.get(benchmark["name"]),
+                    wandb_run=wandb_run,
+                )
+                summary["benchmarks"][benchmark["name"]] = result
+        finally:
+            if predictions_file is not None:
+                predictions_file.close()
 
-    (run_dir / "summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    return run_dir, summary
+        (run_dir / "summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        _log_wandb_results(wandb_run, prediction_tables, summary)
+        exit_code = 0
+        return run_dir, summary
+    finally:
+        if wandb_run is not None:
+            wandb_run.finish(exit_code=exit_code)
 
 
 def _eval_benchmark(
@@ -94,6 +131,8 @@ def _eval_benchmark(
     sample_seed,
     shuffle_buffer_size,
     predictions_file,
+    predictions_table,
+    wandb_run,
 ):
     name = benchmark["name"]
     started_at = time.perf_counter()
@@ -109,64 +148,68 @@ def _eval_benchmark(
         shuffle_buffer_size=shuffle_buffer_size,
     )
 
-    for batch in _batched(examples, batch_size):
-        prompts = [
-            build_eval_prompt(
-                tokenizer,
-                example["problem"],
-                benchmark=name,
-                protocol=protocol,
-                demonstrations=_demonstrations_for(example, few_shots),
-            )
-            for example in batch
-        ]
-        completions = backend.generate(prompts, benchmark_generation)
+    selected_limit = limit if limit is not None else benchmark.get("limit")
+    with tqdm(total=selected_limit, desc=name, unit="example", dynamic_ncols=True) as progress:
+        for batch in _batched(examples, batch_size):
+            prompts = [
+                build_eval_prompt(
+                    tokenizer,
+                    example["problem"],
+                    benchmark=name,
+                    protocol=protocol,
+                    demonstrations=_demonstrations_for(example, few_shots),
+                )
+                for example in batch
+            ]
+            completions = backend.generate(prompts, benchmark_generation)
 
-        for example, generated in zip(batch, completions, strict=True):
-            completion = generated[0]
-            prediction, extraction_method = extract_final_answer(
-                completion,
-                answer_kind=settings["answer_kind"],
-            )
-            if settings["answer_kind"] == "choice":
-                parsed, correct = check_choice_answer(example["answer"], prediction)
-            else:
-                parsed, correct = check_answer(example["answer"], prediction)
-            format_ok = follows_answer_format(
-                completion,
-                answer_format=settings["required_answer_format"],
-            )
-            completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
+            for example, generated in zip(batch, completions, strict=True):
+                completion = generated[0]
+                prediction, extraction_method = extract_final_answer(
+                    completion,
+                    answer_kind=settings["answer_kind"],
+                )
+                if settings["answer_kind"] == "choice":
+                    parsed, correct = check_choice_answer(example["answer"], prediction)
+                else:
+                    parsed, correct = check_answer(example["answer"], prediction)
+                format_ok = follows_answer_format(
+                    completion,
+                    answer_format=settings["required_answer_format"],
+                )
+                completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
 
-            record = {
-                "benchmark": name,
-                "index": metrics["total"],
-                "source": example["source"],
-                "problem": example["problem"],
-                "reference_answer": example["answer"],
-                "completion": completion,
-                "extracted_answer": prediction,
-                "extraction_method": extraction_method,
-                "parsed": parsed,
-                "correct": correct,
-                "format_ok": format_ok,
-                "completion_tokens": completion_tokens,
-                "truncated": completion_tokens >= generation.max_new_tokens - 1,
-            }
-            _update_metrics(metrics, record)
+                record = {
+                    "benchmark": name,
+                    "index": metrics["total"],
+                    "source": example["source"],
+                    "problem": example["problem"],
+                    "reference_answer": example["answer"],
+                    "completion": completion,
+                    "extracted_answer": prediction,
+                    "extraction_method": extraction_method,
+                    "parsed": parsed,
+                    "correct": correct,
+                    "format_ok": format_ok,
+                    "completion_tokens": completion_tokens,
+                    "truncated": completion_tokens >= generation.max_new_tokens - 1,
+                }
+                _update_metrics(metrics, record)
 
-            if predictions_file is not None:
-                predictions_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+                if predictions_file is not None:
+                    predictions_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+                if predictions_table is not None:
+                    predictions_table.add_data(*(record[column] for column in PREDICTION_COLUMNS))
 
-        print(f"\r{name}: {metrics['total']} examples", end="", flush=True)
+            progress.update(len(batch))
+            if wandb_run is not None:
+                wandb_run.log({f"eval/{name}/processed": metrics["total"]})
 
-    print()
     if metrics["total"] == 0:
         raise ValueError(f"Benchmark {name!r} produced no examples")
 
     result = _finish_metrics(metrics)
     elapsed_seconds = time.perf_counter() - started_at
-    selected_limit = limit if limit is not None else benchmark.get("limit")
     result.update(
         {
             "protocol": protocol,
@@ -182,7 +225,7 @@ def _eval_benchmark(
         }
     )
     format_text = "n/a" if result["format_rate"] is None else f"{result['format_rate']:.3f}"
-    print(
+    tqdm.write(
         f"{name}: accuracy={result['accuracy']:.3f}, "
         f"parse_rate={result['parse_rate']:.3f}, format_rate={format_text}"
     )
@@ -350,6 +393,82 @@ def _select_benchmarks(benchmarks, names):
     if missing:
         raise ValueError(f"Unknown benchmarks: {', '.join(sorted(missing))}")
     return selected
+
+
+def _start_wandb_run(
+    config,
+    *,
+    model_name,
+    protocol,
+    run_dir,
+    limit,
+    benchmark_names,
+):
+    settings = config["eval"].get("wandb", {})
+    if not settings.get("enabled", False):
+        return None, {}
+
+    try:
+        import wandb
+    except ImportError as error:
+        raise RuntimeError("W&B logging requires `uv sync --group eval`") from error
+
+    tracked_config = {
+        "experiment": config["experiment"],
+        "model": {**config["model"], "name_or_path": model_name},
+        "eval": config["eval"],
+        "runtime_overrides": {
+            "limit": limit,
+            "benchmarks": benchmark_names,
+        },
+    }
+    run = wandb.init(
+        project=os.getenv("WANDB_PROJECT") or "math-post-training",
+        entity=os.getenv("WANDB_ENTITY") or None,
+        name=config["experiment"]["name"],
+        job_type="eval",
+        tags=["eval", protocol],
+        config=tracked_config,
+        dir=str(run_dir),
+    )
+    tables = {}
+    if settings.get("log_predictions", True):
+        selected = _select_benchmarks(config["eval"]["benchmarks"], benchmark_names)
+        tables = {
+            benchmark["name"]: wandb.Table(columns=PREDICTION_COLUMNS)
+            for benchmark in selected
+        }
+    return run, tables
+
+
+def _log_wandb_results(run, prediction_tables, summary):
+    if run is None:
+        return
+
+    scalar_metrics = (
+        "total",
+        "correct",
+        "accuracy",
+        "parse_rate",
+        "format_rate",
+        "truncated",
+        "mean_completion_tokens",
+        "elapsed_seconds",
+        "completion_tokens_per_second",
+    )
+    for benchmark, result in summary["benchmarks"].items():
+        for metric in scalar_metrics:
+            value = result.get(metric)
+            if value is not None:
+                run.summary[f"eval/{benchmark}/{metric}"] = value
+
+        for source, source_result in result.get("by_source", {}).items():
+            run.summary[f"eval/{benchmark}/by_source/{source}/accuracy"] = source_result[
+                "accuracy"
+            ]
+
+    for benchmark, table in prediction_tables.items():
+        run.log({f"eval/{benchmark}/predictions": table})
 
 
 def _make_run_dir(output_dir, experiment_name):

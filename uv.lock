@@ -505,6 +505,8 @@ dev = [
 ]
 eval = [
     { name = "math-verify", extra = ["antlr4-13-2"] },
+    { name = "tqdm" },
+    { name = "wandb" },
 ]
 train = [
     { name = "accelerate" },
@@ -526,7 +528,11 @@ dev = [
     { name = "pytest", specifier = ">=9.1,<10" },
     { name = "ruff", specifier = ">=0.16,<0.17" },
 ]
-eval = [{ name = "math-verify", extras = ["antlr4-13-2"], specifier = ">=0.9,<1" }]
+eval = [
+    { name = "math-verify", extras = ["antlr4-13-2"], specifier = ">=0.9,<1" },
+    { name = "tqdm", specifier = ">=4.67,<5" },
+    { name = "wandb", specifier = ">=0.28,<0.29" },
+]
 train = [
     { name = "accelerate", specifier = ">=1.14,<2" },
     { name = "peft", specifier = ">=0.19,<0.20" },

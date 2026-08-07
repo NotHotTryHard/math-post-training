@@ -107,6 +107,25 @@ model-eval --model outputs/checkpoints/my-model
 рядом сохраняется `predictions.jsonl.gz`: сжатые задачи, ответы и результаты проверки нужны для
 разбора ошибок и обычно занимают мегабайты или десятки мегабайт, а не гигабайты.
 
+При `eval.wandb.enabled: true` тот же запуск создаёт W&B run с `job_type=eval`. Итоговые
+`accuracy`, `parse_rate`, `format_rate`, число обрезанных ответов, время и throughput каждого
+benchmark записываются в summary run-а. Полные строки eval-а доступны как отдельные
+`wandb.Table`: `eval/gsm8k/predictions`, `eval/math/predictions` и так далее. Поэтому в интерфейсе
+можно фильтровать ошибки по способу извлечения ответа и truncation, а не только смотреть на
+графики. Во время запуска W&B
+также получает счётчик `eval/<benchmark>/processed`; в терминале тот же прогресс показывает
+`tqdm`.
+
+W&B берёт `WANDB_PROJECT`, `WANDB_ENTITY` и `WANDB_API_KEY` из окружения. Для полностью локальной
+проверки без загрузки в облако можно запустить:
+
+```bash
+WANDB_MODE=offline model-eval --limit 1
+```
+
+Такой run позже можно отправить командой `wandb sync`. Чтобы совсем отключить интеграцию,
+достаточно поставить `eval.wandb.enabled: false`.
+
 Ответ извлекается каскадом: последнее `\\boxed{}`, затем `####`, затем последний явный маркер
 `The answer is`/`final answer is`. Только если модель не соблюла ни один формат, используется
 эвристика последнего числа или последней A–D буквы. Поле `extraction_method` позволяет отдельно
@@ -127,7 +146,7 @@ src/math_post_training/
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── inference.py     # Prompt для ручного model-generate.
 │   └── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
-├── eval.py              # Evaluation loop и метрики.
+├── eval.py              # Evaluation loop, метрики, tqdm и W&B-логирование.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
 │   ├── loaders.py       # Загрузка, sampling и нормализация датасета.
