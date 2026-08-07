@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("math_verify")
 
-from math_post_training import evaluation  # noqa: E402
+from math_post_training import eval  # noqa: E402
 
 
 class FakeTokenizer:
@@ -26,9 +26,9 @@ class FakeChoiceBackend:
         return [["After checking the options, the answer is C."] for _ in prompts]
 
 
-def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
+def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
     monkeypatch.setattr(
-        evaluation,
+        eval,
         "load_math_source",
         lambda source: iter(
             [
@@ -43,7 +43,7 @@ def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_p
     )
     config = {
         "experiment": {"name": "test-eval"},
-        "evaluation": {
+        "eval": {
             "protocol": "qwen2_5_math_instruct",
             "output_dir": str(tmp_path),
             "sample_seed": 42,
@@ -67,7 +67,7 @@ def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_p
         },
     }
 
-    run_dir, summary = evaluation.evaluate_model(
+    run_dir, summary = eval.eval_model(
         FakeBackend(), FakeTokenizer(), config, model_name="fake-model"
     )
 
@@ -81,7 +81,7 @@ def test_evaluation_writes_summary_and_compressed_predictions(monkeypatch, tmp_p
 
 def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
     monkeypatch.setattr(
-        evaluation,
+        eval,
         "load_math_source",
         lambda source: iter(
             [
@@ -103,7 +103,7 @@ def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
     }
 
     examples = list(
-        evaluation._benchmark_examples(
+        eval._benchmark_examples(
             benchmark,
             cli_limit=5,
             sample_seed=42,
@@ -121,7 +121,7 @@ def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
         seen.append(source)
         return iter([])
 
-    monkeypatch.setattr(evaluation, "load_math_source", load)
+    monkeypatch.setattr(eval, "load_math_source", load)
     benchmark = {
         "adapter": "fixture",
         "path": "fixture",
@@ -130,7 +130,7 @@ def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
     }
 
     list(
-        evaluation._benchmark_examples(
+        eval._benchmark_examples(
             benchmark,
             cli_limit=5,
             sample_seed=123,
@@ -157,7 +157,7 @@ def test_mmlu_few_shots_are_loaded_from_each_subject_dev_split(monkeypatch):
             for index in range(5)
         )
 
-    monkeypatch.setattr(evaluation, "load_math_source", load)
+    monkeypatch.setattr(eval, "load_math_source", load)
     benchmark = {
         "name": "mmlu_stem",
         "adapter": "mmlu",
@@ -169,7 +169,7 @@ def test_mmlu_few_shots_are_loaded_from_each_subject_dev_split(monkeypatch):
         "subsets": ["abstract_algebra", "anatomy"],
     }
 
-    demonstrations = evaluation._load_few_shot_demonstrations(benchmark)
+    demonstrations = eval._load_few_shot_demonstrations(benchmark)
 
     assert set(demonstrations) == {"abstract_algebra", "anatomy"}
     assert all(len(examples) == 5 for examples in demonstrations.values())
@@ -189,10 +189,10 @@ def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path)
             for index in range(count)
         )
 
-    monkeypatch.setattr(evaluation, "load_math_source", load)
+    monkeypatch.setattr(eval, "load_math_source", load)
     config = {
         "experiment": {"name": "mmlu-eval"},
-        "evaluation": {
+        "eval": {
             "protocol": "qwen2_5_math_base",
             "output_dir": str(tmp_path),
             "sample_seed": 42,
@@ -219,7 +219,7 @@ def test_mmlu_uses_dev_few_shots_and_exact_choice_grading(monkeypatch, tmp_path)
         },
     }
 
-    _, summary = evaluation.evaluate_model(
+    _, summary = eval.eval_model(
         FakeChoiceBackend(),
         FakeTokenizer(),
         config,

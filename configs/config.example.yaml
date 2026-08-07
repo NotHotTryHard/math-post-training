@@ -41,10 +41,10 @@ inference:
   top_p: 0.95
   seed: 42
 
-evaluation:
+eval:
   backend: transformers
   protocol: qwen2_5_math_base
-  output_dir: outputs/evaluations
+  output_dir: outputs/eval
   sample_seed: 42
   shuffle_buffer_size: 10_000
   batch_size: 4

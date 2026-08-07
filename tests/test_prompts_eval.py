@@ -1,8 +1,8 @@
 import pytest
 
-from math_post_training.prompts.evaluation import (
-    build_evaluation_prompt,
-    get_evaluation_settings,
+from math_post_training.prompts.eval import (
+    build_eval_prompt,
+    get_eval_settings,
 )
 
 
@@ -15,15 +15,15 @@ class RecordingTokenizer:
 
 
 def test_base_protocol_uses_published_shot_counts():
-    assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
-    assert get_evaluation_settings("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert get_evaluation_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == [
+    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
+    assert get_eval_settings("qwen2_5_math_base", "math")["num_shots"] == 4
+    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == [
         "Question:"
     ]
 
 
 def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
-    prompt = build_evaluation_prompt(
+    prompt = build_eval_prompt(
         RecordingTokenizer(),
         "What is 1 + 1?",
         benchmark="gsm8k",
@@ -35,7 +35,7 @@ def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
 
 
 def test_base_zero_shot_prompt_asks_for_a_direct_answer():
-    prompt = build_evaluation_prompt(
+    prompt = build_eval_prompt(
         RecordingTokenizer(),
         "What is 1 + 1?",
         benchmark="gsm8k",
@@ -44,7 +44,7 @@ def test_base_zero_shot_prompt_asks_for_a_direct_answer():
 
     assert prompt == "Question: What is 1 + 1?\nAnswer:"
     assert (
-        get_evaluation_settings(
+        get_eval_settings(
             "qwen2_5_math_base_zero_shot",
             "gsm8k",
         )["num_shots"]
@@ -53,7 +53,7 @@ def test_base_zero_shot_prompt_asks_for_a_direct_answer():
 
 
 def test_base_zero_shot_cot_prompt_adds_reasoning_cue():
-    prompt = build_evaluation_prompt(
+    prompt = build_eval_prompt(
         RecordingTokenizer(),
         "What is 1 + 1?",
         benchmark="gsm8k",
@@ -65,7 +65,7 @@ def test_base_zero_shot_cot_prompt_adds_reasoning_cue():
 
 def test_instruct_protocol_uses_chat_template_and_boxed_system_prompt():
     tokenizer = RecordingTokenizer()
-    prompt = build_evaluation_prompt(
+    prompt = build_eval_prompt(
         tokenizer,
         "What is 1 + 1?",
         benchmark="gsm8k",
@@ -85,7 +85,7 @@ def test_mmlu_prompt_adds_subject_dev_examples():
             "answer": "B",
         }
     ]
-    prompt = build_evaluation_prompt(
+    prompt = build_eval_prompt(
         RecordingTokenizer(),
         "Target\nA. one\nB. two\nC. three\nD. four",
         benchmark="mmlu_stem",
@@ -96,7 +96,7 @@ def test_mmlu_prompt_adds_subject_dev_examples():
     assert prompt.startswith("Question: Demo")
     assert "Answer: B" in prompt
     assert prompt.endswith("D. four\nAnswer:")
-    settings = get_evaluation_settings(
+    settings = get_eval_settings(
         "qwen2_5_math_base",
         "mmlu_stem",
         demonstrations,
@@ -107,7 +107,7 @@ def test_mmlu_prompt_adds_subject_dev_examples():
 
 def test_mmlu_requires_dev_examples():
     with pytest.raises(ValueError, match="requires dev demonstrations"):
-        build_evaluation_prompt(
+        build_eval_prompt(
             RecordingTokenizer(),
             "question",
             benchmark="mmlu_stem",

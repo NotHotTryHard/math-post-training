@@ -79,17 +79,17 @@ def generate_main(argv=None):
     return 0
 
 
-def _evaluate_parser():
+def _eval_parser():
     parser = argparse.ArgumentParser(description="Evaluate a model on math benchmarks")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--model", help="override model.name_or_path with a checkpoint")
     parser.add_argument("--device", default="auto")
     parser.add_argument("--limit", type=int, help="evaluate this many examples per benchmark")
-    parser.add_argument("--batch-size", type=int, help="override evaluation.batch_size")
+    parser.add_argument("--batch-size", type=int, help="override eval.batch_size")
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        help="override evaluation.generation.max_new_tokens",
+        help="override eval.generation.max_new_tokens",
     )
     parser.add_argument(
         "--benchmark",
@@ -101,30 +101,30 @@ def _evaluate_parser():
     return parser
 
 
-def evaluate_main(argv=None):
-    args = _evaluate_parser().parse_args(argv)
+def eval_main(argv=None):
+    args = _eval_parser().parse_args(argv)
     config = load_yaml_config(args.config)
 
     if args.batch_size is not None:
-        config["evaluation"]["batch_size"] = args.batch_size
+        config["eval"]["batch_size"] = args.batch_size
     if args.max_new_tokens is not None:
-        config["evaluation"]["generation"]["max_new_tokens"] = args.max_new_tokens
+        config["eval"]["generation"]["max_new_tokens"] = args.max_new_tokens
 
     model_config = dict(config["model"])
     if args.model is not None:
         model_config["name_or_path"] = args.model
 
-    backend_name = config["evaluation"]["backend"]
+    backend_name = config["eval"]["backend"]
     if backend_name != "transformers":
-        raise ValueError(f"model-evaluate does not support backend {backend_name!r} yet")
+        raise ValueError(f"model-eval does not support backend {backend_name!r} yet")
 
     device = _device(args.device)
     model, tokenizer = load_model_and_tokenizer(**model_config, device=device)
     backend = TransformersBackend(model, tokenizer, device)
 
-    from math_post_training.evaluation import evaluate_model
+    from math_post_training.eval import eval_model
 
-    run_dir, _ = evaluate_model(
+    run_dir, _ = eval_model(
         backend,
         tokenizer,
         config,

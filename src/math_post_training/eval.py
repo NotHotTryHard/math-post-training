@@ -10,16 +10,16 @@ from pathlib import Path
 
 from math_post_training.data.loaders import load_math_source
 from math_post_training.generation.base import GenerationConfig
-from math_post_training.prompts.evaluation import (
-    build_evaluation_prompt,
-    get_evaluation_settings,
+from math_post_training.prompts.eval import (
+    build_eval_prompt,
+    get_eval_settings,
 )
 from math_post_training.verifiers.choice import check_choice_answer
 from math_post_training.verifiers.extraction import extract_final_answer, follows_answer_format
 from math_post_training.verifiers.math import check_answer
 
 
-def evaluate_model(
+def eval_model(
     backend,
     tokenizer,
     config,
@@ -31,19 +31,19 @@ def evaluate_model(
 ):
     """Run every configured benchmark and write a compact summary."""
 
-    evaluation = config["evaluation"]
-    protocol = evaluation["protocol"]
-    generation = GenerationConfig(**evaluation["generation"])
+    eval_config = config["eval"]
+    protocol = eval_config["protocol"]
+    generation = GenerationConfig(**eval_config["generation"])
     if generation.num_return_sequences != 1:
-        raise ValueError("evaluation requires generation.num_return_sequences = 1")
+        raise ValueError("eval requires generation.num_return_sequences = 1")
 
     run_dir = _make_run_dir(
-        output_dir or evaluation["output_dir"],
+        output_dir or eval_config["output_dir"],
         config["experiment"]["name"],
     )
     predictions_path = run_dir / "predictions.jsonl.gz"
     predictions_file = None
-    if evaluation.get("save_predictions", True):
+    if eval_config.get("save_predictions", True):
         predictions_file = gzip.open(predictions_path, "wt", encoding="utf-8")
 
     summary = {
@@ -56,18 +56,18 @@ def evaluate_model(
     }
 
     try:
-        selected = _select_benchmarks(evaluation["benchmarks"], benchmark_names)
+        selected = _select_benchmarks(eval_config["benchmarks"], benchmark_names)
         for benchmark in selected:
-            result = _evaluate_benchmark(
+            result = _eval_benchmark(
                 backend,
                 tokenizer,
                 benchmark,
                 generation,
                 protocol=protocol,
-                batch_size=evaluation["batch_size"],
+                batch_size=eval_config["batch_size"],
                 limit=limit,
-                sample_seed=evaluation["sample_seed"],
-                shuffle_buffer_size=evaluation["shuffle_buffer_size"],
+                sample_seed=eval_config["sample_seed"],
+                shuffle_buffer_size=eval_config["shuffle_buffer_size"],
                 predictions_file=predictions_file,
             )
             summary["benchmarks"][benchmark["name"]] = result
@@ -82,7 +82,7 @@ def evaluate_model(
     return run_dir, summary
 
 
-def _evaluate_benchmark(
+def _eval_benchmark(
     backend,
     tokenizer,
     benchmark,
@@ -99,7 +99,7 @@ def _evaluate_benchmark(
     started_at = time.perf_counter()
     few_shots = _load_few_shot_demonstrations(benchmark)
     settings_demonstrations = next(iter(few_shots.values()), None)
-    settings = get_evaluation_settings(protocol, name, settings_demonstrations)
+    settings = get_eval_settings(protocol, name, settings_demonstrations)
     benchmark_generation = replace(generation, stop_strings=settings["stop_strings"])
     metrics = _empty_metrics()
     examples = _benchmark_examples(
@@ -111,7 +111,7 @@ def _evaluate_benchmark(
 
     for batch in _batched(examples, batch_size):
         prompts = [
-            build_evaluation_prompt(
+            build_eval_prompt(
                 tokenizer,
                 example["problem"],
                 benchmark=name,
@@ -251,7 +251,7 @@ def _benchmark_examples(benchmark, cli_limit, *, sample_seed, shuffle_buffer_siz
     if selected_limit is None:
         return all_examples()
     if selected_limit < 1:
-        raise ValueError("evaluation limit must be positive")
+        raise ValueError("eval limit must be positive")
 
     if len(subsets) == 1:
         return islice(subset_examples(subsets[0]), selected_limit)
@@ -275,7 +275,7 @@ def _round_robin(iterables):
 
 def _batched(examples, batch_size):
     if batch_size < 1:
-        raise ValueError("evaluation.batch_size must be positive")
+        raise ValueError("eval.batch_size must be positive")
 
     iterator = iter(examples)
     while batch := list(islice(iterator, batch_size)):

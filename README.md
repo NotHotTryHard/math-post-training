@@ -57,7 +57,7 @@ Evaluation запускается отдельно от train-зависимос
 
 ```bash
 uv sync --group eval
-model-evaluate --limit 10
+model-eval --limit 10
 ```
 
 `--limit 10` — быстрый локальный прогон десяти примеров из каждого benchmark. Без этого флага
@@ -65,22 +65,22 @@ model-evaluate --limit 10
 выбрать отдельно (флаг разрешено повторять):
 
 ```bash
-model-evaluate --benchmark gsm8k
+model-eval --benchmark gsm8k
 ```
 
 Для MATH и MMLU-STEM ограниченная выборка набирается round-robin по категориям, а не только из
 первой. Перед limited-run строки детерминированно перемешиваются с
-`evaluation.sample_seed`, поэтому это не просто первые N строк. Размер батча для конкретной машины можно подобрать через
+`eval.sample_seed`, поэтому это не просто первые N строк. Размер батча для конкретной машины можно подобрать через
 `--batch-size`; это не меняет greedy-предсказания. `--max-new-tokens` полезен для ограниченного
 локального прогона, но уже меняет evaluation protocol и поэтому сохраняется в `summary.json`.
 
 Для исходных 1.5B checkpoints зафиксированы четыре полных baseline-конфига:
 
 ```bash
-model-evaluate --config configs/evaluation/qwen2_5_1_5b_base_zero_shot.yaml
-model-evaluate --config configs/evaluation/qwen2_5_1_5b_base_zero_shot_cot.yaml
-model-evaluate --config configs/evaluation/qwen2_5_1_5b_base_few_shot_cot.yaml
-model-evaluate --config configs/evaluation/qwen2_5_1_5b_instruct.yaml
+model-eval --config configs/eval/qwen2_5_1_5b_base_zero_shot.yaml
+model-eval --config configs/eval/qwen2_5_1_5b_base_zero_shot_cot.yaml
+model-eval --config configs/eval/qwen2_5_1_5b_base_few_shot_cot.yaml
+model-eval --config configs/eval/qwen2_5_1_5b_instruct.yaml
 ```
 
 Первые три запуска измеряют Base checkpoint с raw zero-shot, raw zero-shot+CoT и опубликованным
@@ -100,10 +100,10 @@ pipeline, но не следует сравнивать с MMLU-числами, 
 Для проверки другого checkpoint достаточно заменить веса, не создавая новый evaluator:
 
 ```bash
-model-evaluate --model outputs/checkpoints/my-model
+model-eval --model outputs/checkpoints/my-model
 ```
 
-Каждый запуск создаёт `summary.json` с метриками. Если `evaluation.save_predictions` включён,
+Каждый запуск создаёт `summary.json` с метриками. Если `eval.save_predictions` включён,
 рядом сохраняется `predictions.jsonl.gz`: сжатые задачи, ответы и результаты проверки нужны для
 разбора ошибок и обычно занимают мегабайты или десятки мегабайт, а не гигабайты.
 
@@ -116,7 +116,7 @@ model-evaluate --model outputs/checkpoints/my-model
 
 ```text
 configs/
-├── evaluation/          # Замороженные full-split baseline-прогоны.
+├── eval/                # Замороженные full-split baseline-прогоны.
 ├── config.example.yaml  # Полный пример конфигурации эксперимента.
 └── current.yaml         # Текущий локальный эксперимент.
 
@@ -126,8 +126,8 @@ src/math_post_training/
 ├── model.py             # Общая загрузка model/tokenizer из HF или checkpoint-а.
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── inference.py     # Prompt для ручного model-generate.
-│   └── evaluation.py    # Явные Qwen Base/Instruct evaluation protocols.
-├── evaluation.py        # Evaluation loop и метрики.
+│   └── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
+├── eval.py              # Evaluation loop и метрики.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
 │   ├── loaders.py       # Загрузка, sampling и нормализация датасета.
@@ -143,5 +143,5 @@ src/math_post_training/
     └── choice.py        # Exact-match для multiple-choice ответов.
 ```
 
-Пустых `training.py` и `rewards.py` пока намеренно нет: они появятся вместе с первой рабочей SFT
+Пустых `train.py` и `rewards.py` пока намеренно нет: они появятся вместе с первой рабочей SFT
 стадией, чтобы наличие файла не создавало впечатление, будто за ним уже стоит реализованный путь.

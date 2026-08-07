@@ -1,4 +1,4 @@
-"""Published Qwen2.5-Math evaluation prompt protocols.
+"""Published Qwen2.5-Math eval prompt protocols.
 
 GSM8K and MATH use the fixed prompts from Appendix B of the technical report.
 MMLU uses five dev examples from the subject currently being evaluated.
@@ -9,7 +9,7 @@ MMLU uses five dev examples from the subject currently being evaluated.
 QWEN_INSTRUCT_SYSTEM = "Please reason step by step, and put your final answer within \\boxed{}."
 
 
-def build_evaluation_prompt(
+def build_eval_prompt(
     tokenizer,
     problem,
     benchmark,
@@ -53,7 +53,7 @@ def build_evaluation_prompt(
     raise ValueError(f"Unknown evaluation protocol: {protocol!r}")
 
 
-def get_evaluation_settings(protocol, benchmark, demonstrations=None):
+def get_eval_settings(protocol, benchmark, demonstrations=None):
     """Return generation and answer-parsing settings fixed by the protocol."""
 
     if benchmark not in {"gsm8k", "gsm1k", "math", "mmlu_stem"}:

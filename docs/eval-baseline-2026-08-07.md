@@ -53,18 +53,17 @@ MATH при `max_new_tokens=512` слишком часто обрезается.
 
 ```bash
 # Полный локальный Instruct baseline на GSM8K
-model-evaluate --benchmark gsm8k --batch-size 16 --max-new-tokens 512 --device mps
+model-eval --benchmark gsm8k --batch-size 16 --max-new-tokens 512 --device mps
 
 # Seeded random GSM1k-200
-model-evaluate --benchmark gsm1k --limit 200 --batch-size 16 --max-new-tokens 512 --device mps
+model-eval --benchmark gsm1k --limit 200 --batch-size 16 --max-new-tokens 512 --device mps
 
 # Seeded и сбалансированный по категориям MATH-140
-model-evaluate --benchmark math --limit 140 --batch-size 16 --max-new-tokens 512 --device mps
+model-eval --benchmark math --limit 140 --batch-size 16 --max-new-tokens 512 --device mps
 
 # Опубликованный Base 8-shot prompt на seeded GSM8K-100
-model-evaluate \
-  --model Qwen/Qwen2.5-1.5B \
-  --protocol qwen2_5_math_base \
+model-eval \
+  --config configs/eval/qwen2_5_1_5b_base_few_shot_cot.yaml \
   --benchmark gsm8k \
   --limit 100 \
   --batch-size 1 \
@@ -72,7 +71,7 @@ model-evaluate \
   --device mps
 ```
 
-Сырые completions и `summary.json` лежат в `outputs/evaluations/` и намеренно игнорируются git.
+Сырые completions и `summary.json` лежат в `outputs/eval/` и намеренно игнорируются git.
 Весь набор артефактов после этих запусков занимает меньше 1 MB.
 
 ## Источники протокола
