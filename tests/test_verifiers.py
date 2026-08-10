@@ -1,14 +1,12 @@
 import pytest
 
-pytest.importorskip("math_verify")
-
-from math_post_training.verifiers.choice import check_choice_answer  # noqa: E402
-from math_post_training.verifiers.extraction import (  # noqa: E402
+from math_post_training.verifiers.choice import check_choice_answer
+from math_post_training.verifiers.extraction import (
     extract_final_answer,
     extract_last_boxed,
     follows_answer_format,
 )
-from math_post_training.verifiers.math import check_answer  # noqa: E402
+from math_post_training.verifiers.math import check_answer
 
 
 def test_final_answer_extraction_uses_last_delimiter():
@@ -26,16 +24,10 @@ def test_boxed_answer_extraction_handles_nested_braces():
     assert follows_answer_format(completion, answer_format="boxed")
 
 
-def test_math_verifier_accepts_equivalent_forms():
-    parsed, correct = check_answer(r"\frac{1}{2}", "$0.5$")
-
-    assert parsed
-    assert correct
-
-
 @pytest.mark.parametrize(
     ("reference", "prediction"),
     [
+        (r"\frac{1}{2}", "$0.5$"),
         (r"\sqrt{13}", r"\sqrt{13}"),
         (r"-\frac{24}{25}", r"$-0.96$"),
         (r"987,\!436", "987436"),
@@ -53,6 +45,10 @@ def test_math_verifier_compares_text_choice_lists():
 
 def test_unparseable_text_is_not_silently_accepted():
     assert check_answer("not math", "not math") == (False, False)
+
+
+def test_math_verifier_rejects_a_different_valid_answer():
+    assert check_answer("1", "2") == (True, False)
 
 
 def test_answer_marker_wins_over_numbers_in_reasoning():

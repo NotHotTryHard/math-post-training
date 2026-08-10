@@ -1,5 +1,5 @@
 import pytest
-from datasets import ClassLabel, Dataset, IterableDataset
+from datasets import ClassLabel, Dataset
 
 from math_post_training.data import loaders
 from math_post_training.data.preprocessing import to_grpo_example, to_sft_example
@@ -134,11 +134,15 @@ def test_grpo_rejects_an_example_without_reference_answer():
 
 
 def test_dataset_sources_can_be_mixed(monkeypatch):
-    source_datasets = {
-        "a": IterableDataset.from_generator(lambda: iter([{"value": "a1"}, {"value": "a2"}])),
-        "b": IterableDataset.from_generator(lambda: iter([{"value": "b1"}, {"value": "b2"}])),
-    }
+    source_datasets = {"a": object(), "b": object()}
+    calls = []
+
     monkeypatch.setattr(loaders, "load_math_source", lambda source: source_datasets[source["name"]])
+    monkeypatch.setattr(
+        loaders,
+        "interleave_datasets",
+        lambda datasets, **kwargs: calls.append((datasets, kwargs)) or "mixed",
+    )
 
     dataset = loaders.load_math_dataset(
         {
@@ -151,15 +155,23 @@ def test_dataset_sources_can_be_mixed(monkeypatch):
         }
     )
 
-    values = [row["value"] for row in dataset]
-    assert values
-    assert all(value[0] in {"a", "b"} for value in values)
+    assert dataset == "mixed"
+    assert calls == [
+        (
+            [source_datasets["a"], source_datasets["b"]],
+            {
+                "probabilities": [0.5, 0.5],
+                "seed": 42,
+                "stopping_strategy": "first_exhausted",
+            },
+        )
+    ]
 
 
 def test_one_source_uses_the_same_sources_shape(monkeypatch):
-    source_dataset = IterableDataset.from_generator(lambda: iter([{"value": "only"}]))
+    source_dataset = object()
     monkeypatch.setattr(loaders, "load_math_source", lambda source: source_dataset)
 
     dataset = loaders.load_math_dataset({"sources": [{"name": "only"}]})
 
-    assert list(dataset) == [{"value": "only"}]
+    assert dataset is source_dataset

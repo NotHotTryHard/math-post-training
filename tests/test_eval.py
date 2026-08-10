@@ -6,12 +6,31 @@ from types import SimpleNamespace
 
 import pytest
 
-pytest.importorskip("math_verify")
-
-from math_post_training import eval  # noqa: E402
-from math_post_training.config import load_yaml_config  # noqa: E402
+from math_post_training import eval
+from math_post_training.config import load_yaml_config
 
 BASELINE_CONFIGS = sorted((Path(__file__).parents[1] / "configs" / "eval").glob("*.yaml"))
+MMLU_STEM_SUBSETS = {
+    "abstract_algebra",
+    "anatomy",
+    "astronomy",
+    "college_biology",
+    "college_chemistry",
+    "college_computer_science",
+    "college_mathematics",
+    "college_physics",
+    "computer_security",
+    "conceptual_physics",
+    "electrical_engineering",
+    "elementary_mathematics",
+    "high_school_biology",
+    "high_school_chemistry",
+    "high_school_computer_science",
+    "high_school_mathematics",
+    "high_school_physics",
+    "high_school_statistics",
+    "machine_learning",
+}
 
 
 class FakeTokenizer:
@@ -176,6 +195,30 @@ def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
     assert summary["benchmarks"]["gsm8k"]["parse_rate"] == 0.0
 
 
+def test_metric_aggregation_separates_accuracy_from_parse_rate():
+    metrics = eval._empty_metrics()
+    for parsed, correct in [(True, True), (True, False), (False, False)]:
+        eval._update_metrics(
+            metrics,
+            {
+                "parsed": parsed,
+                "correct": correct,
+                "format_ok": None,
+                "truncated": False,
+                "completion_tokens": 1,
+                "extraction_method": "fixture",
+                "source": "fixture",
+            },
+        )
+
+    result = eval._finish_metrics(metrics)
+
+    assert result["total"] == 3
+    assert result["correct"] == 1
+    assert result["accuracy"] == pytest.approx(1 / 3)
+    assert result["parse_rate"] == pytest.approx(2 / 3)
+
+
 @pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
 def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path):
     def load(source):
@@ -217,6 +260,18 @@ def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path
 
     assert set(summary["benchmarks"]) == {"gsm8k", "gsm1k", "math", "mmlu_stem"}
     assert all(result["total"] == 1 for result in summary["benchmarks"].values())
+
+
+@pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
+def test_baseline_configs_use_the_full_mmlu_stem_test_split(config_path):
+    config = load_yaml_config(config_path)
+    benchmark = next(
+        benchmark for benchmark in config["eval"]["benchmarks"] if benchmark["name"] == "mmlu_stem"
+    )
+
+    assert benchmark["split"] == "test"
+    assert "limit" not in benchmark
+    assert set(benchmark["subsets"]) == MMLU_STEM_SUBSETS
 
 
 def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):

@@ -500,6 +500,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "math-verify", extra = ["antlr4-13-2"] },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -525,6 +526,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "math-verify", extras = ["antlr4-13-2"], specifier = ">=0.9,<1" },
     { name = "pytest", specifier = ">=9.1,<10" },
     { name = "ruff", specifier = ">=0.16,<0.17" },
 ]

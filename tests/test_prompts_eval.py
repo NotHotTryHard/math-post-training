@@ -1,6 +1,10 @@
+import hashlib
+
 import pytest
 
 from math_post_training.prompts.eval import (
+    MMLU_BASE_PREFIX,
+    MMLU_INSTRUCT_PREFIX,
     build_eval_prompt,
     get_eval_settings,
 )
@@ -34,6 +38,18 @@ def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
 
     assert prompt.count("Question:") == 9
     assert prompt.endswith("Question: What is 1 + 1?\nLet's think step by step")
+
+
+def test_base_math_prompt_uses_four_shots_and_ends_with_target_problem():
+    prompt = build_eval_prompt(
+        RecordingTokenizer(),
+        "What is 1 + 1?",
+        benchmark="math",
+        protocol="qwen2_5_math_base",
+    )
+
+    assert prompt.count("Problem:") == 5
+    assert prompt.endswith("Problem: What is 1 + 1?\nSolution:")
 
 
 def test_base_zero_shot_prompt_asks_for_a_direct_answer():
@@ -98,6 +114,15 @@ def test_base_mmlu_prompt_uses_published_four_shots():
     assert settings["num_shots"] == 4
     assert settings["answer_kind"] == "choice"
     assert settings["stop_strings"] == ["Problem:", "[Problem]", "\nQ:"]
+
+
+def test_published_mmlu_prefixes_are_frozen():
+    assert hashlib.sha256(MMLU_BASE_PREFIX.encode()).hexdigest() == (
+        "023df72bcbdf5b7a3e7670d8d412555c7b4a3300ec46e3551c75cadb4f5ad9db"
+    )
+    assert hashlib.sha256(MMLU_INSTRUCT_PREFIX.encode()).hexdigest() == (
+        "f8b198e7aeb41d272608cddc675f2a05f9228164185c83bbb02a5b4a07553cd4"
+    )
 
 
 def test_instruct_mmlu_prompt_uses_official_five_shots_in_one_user_turn():
