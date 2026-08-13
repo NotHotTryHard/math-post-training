@@ -3,7 +3,7 @@ name = "math-post-training"
 version = "0.1.0"
 description = "SFT and RL post-training experiments for language models on math problems"
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "datasets>=5.0,<6",
     "pyyaml>=6.0,<7",
