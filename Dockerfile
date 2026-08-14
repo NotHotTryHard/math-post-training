@@ -5,11 +5,14 @@ WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml uv.lock README.md ./
-COPY src/ ./src/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --group dev --group train --group eval
 
+COPY src/ ./src/
 COPY configs/ ./configs/
 COPY tests/ ./tests/
 
-RUN uv sync --frozen --group dev --group train --group eval
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --group dev --group train --group eval
 
 CMD ["sleep", "infinity"]
