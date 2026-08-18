@@ -6,7 +6,7 @@ ENV PATH="/app/.venv/bin:$PATH" UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml uv.lock README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --group dev --group train --group eval
+    uv sync --verbose --frozen --no-install-project --group dev --group train --group eval
 
 COPY src/ ./src/
 COPY configs/ ./configs/
