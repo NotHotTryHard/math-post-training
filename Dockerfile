@@ -2,7 +2,18 @@ FROM ghcr.io/astral-sh/uv:0.12.3-python3.12-trixie-slim
 
 WORKDIR /app
 
-ENV PATH="/app/.venv/bin:$PATH" UV_COMPILE_BYTECODE=1
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        libc6-dev \
+        tmux && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    UV_COMPILE_BYTECODE=1 \
+    CC=gcc \
+    HF_HOME=/workspace/.cache/huggingface \
+    WANDB_DIR=/workspace/wandb
 
 COPY pyproject.toml uv.lock README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
