@@ -110,9 +110,18 @@ def test_sft_and_grpo_use_different_parts_of_the_same_example():
     }
 
     assert to_sft_example(example) == {
-        "problem": "What is 2 + 2?",
-        "completion": "Two plus two equals four.",
-        "source": "fixture",
+        "prompt": [
+            {
+                "role": "user",
+                "content": "What is 2 + 2?",
+            }
+        ],
+        "completion": [
+            {
+                "role": "assistant",
+                "content": "Two plus two equals four.",
+            }
+        ],
     }
     assert to_grpo_example(example) == {
         "problem": "What is 2 + 2?",
