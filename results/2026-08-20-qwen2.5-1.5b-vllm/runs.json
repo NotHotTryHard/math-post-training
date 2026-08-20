@@ -1,0 +1,1222 @@
+[
+  {
+    "run_id": "qac70va9",
+    "name": "qwen2.5-1.5b-instruct",
+    "configuration": "instruct",
+    "mode": "greedy",
+    "state": "finished",
+    "created_at": "2026-08-20T11:22:18Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/qac70va9",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_instruct",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_p": 1,
+          "do_sample": false,
+          "temperature": 0,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B-Instruct",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-instruct"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 985,
+        "accuracy": 0.7467778620166793,
+        "parse_rate": 0.9931766489764974,
+        "format_rate": 0.952994692949204,
+        "truncated": 9,
+        "mean_completion_tokens": 318.0303260045489,
+        "elapsed_seconds": 33.33006248797756,
+        "completion_tokens_per_second": 12585.69497585883
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 856,
+        "accuracy": 0.7103734439834025,
+        "parse_rate": 0.9983402489626556,
+        "format_rate": 0.933609958506224,
+        "truncated": 2,
+        "mean_completion_tokens": 345.15767634854774,
+        "elapsed_seconds": 31.82025437001721,
+        "completion_tokens_per_second": 13070.762890943384
+      },
+      "math": {
+        "total": 5000,
+        "correct": 2695,
+        "accuracy": 0.539,
+        "parse_rate": 0.9426,
+        "format_rate": 0.9428,
+        "truncated": 248,
+        "mean_completion_tokens": 629.4062,
+        "elapsed_seconds": 220.5462389460008,
+        "completion_tokens_per_second": 14269.257163666836
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1800,
+        "accuracy": 0.570884871550904,
+        "parse_rate": 0.9831906121154456,
+        "format_rate": null,
+        "truncated": 51,
+        "mean_completion_tokens": 248.72756105296543,
+        "elapsed_seconds": 104.54893056701984,
+        "completion_tokens_per_second": 7501.157551269963
+      }
+    }
+  },
+  {
+    "run_id": "8oj7stws",
+    "name": "qwen2.5-1.5b-instruct-sampling-t0.7-p0.8-k20",
+    "configuration": "instruct",
+    "mode": "sampling",
+    "state": "finished",
+    "created_at": "2026-08-20T11:46:27Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/8oj7stws",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_instruct",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_k": 20,
+          "top_p": 0.8,
+          "do_sample": true,
+          "temperature": 0.7,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B-Instruct",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-instruct-sampling-t0.7-p0.8-k20"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 944,
+        "accuracy": 0.7156937073540561,
+        "parse_rate": 0.9954510993176648,
+        "format_rate": 0.8476118271417741,
+        "truncated": 6,
+        "mean_completion_tokens": 296.2888551933283,
+        "elapsed_seconds": 48.71289565000916,
+        "completion_tokens_per_second": 8022.61895510879
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 793,
+        "accuracy": 0.6580912863070539,
+        "parse_rate": 0.9941908713692946,
+        "format_rate": 0.8174273858921162,
+        "truncated": 6,
+        "mean_completion_tokens": 332.99751037344396,
+        "elapsed_seconds": 35.03084587099147,
+        "completion_tokens_per_second": 11454.533569578438
+      },
+      "math": {
+        "total": 5000,
+        "correct": 2646,
+        "accuracy": 0.5292,
+        "parse_rate": 0.9544,
+        "format_rate": 0.9518,
+        "truncated": 184,
+        "mean_completion_tokens": 617.4484,
+        "elapsed_seconds": 222.77926226102863,
+        "completion_tokens_per_second": 13857.851797635922
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1801,
+        "accuracy": 0.5712020298128766,
+        "parse_rate": 0.9949254678084364,
+        "format_rate": null,
+        "truncated": 13,
+        "mean_completion_tokens": 223.09134157944817,
+        "elapsed_seconds": 91.79160556397984,
+        "completion_tokens_per_second": 7663.086353901033
+      }
+    }
+  },
+  {
+    "run_id": "w9en9spb",
+    "name": "qwen2.5-1.5b-base-zero-shot",
+    "configuration": "base_zero_shot",
+    "mode": "greedy",
+    "state": "finished",
+    "created_at": "2026-08-20T11:29:35Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/w9en9spb",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_base_zero_shot",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_p": 1,
+          "do_sample": false,
+          "temperature": 0,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-base-zero-shot"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 815,
+        "accuracy": 0.6178923426838514,
+        "parse_rate": 0.99393479909022,
+        "format_rate": null,
+        "truncated": 8,
+        "mean_completion_tokens": 109.46929492039423,
+        "elapsed_seconds": 23.230180433980426,
+        "completion_tokens_per_second": 6215.621114539023
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 667,
+        "accuracy": 0.5535269709543569,
+        "parse_rate": 0.991701244813278,
+        "format_rate": null,
+        "truncated": 9,
+        "mean_completion_tokens": 133.72614107883817,
+        "elapsed_seconds": 23.582509514992125,
+        "completion_tokens_per_second": 6833.030212393569
+      },
+      "math": {
+        "total": 5000,
+        "correct": 1474,
+        "accuracy": 0.2948,
+        "parse_rate": 0.863,
+        "format_rate": null,
+        "truncated": 734,
+        "mean_completion_tokens": 653.0246,
+        "elapsed_seconds": 213.69255624900688,
+        "completion_tokens_per_second": 15279.535503311075
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1669,
+        "accuracy": 0.529337139232477,
+        "parse_rate": 0.9996828417380272,
+        "format_rate": null,
+        "truncated": 1,
+        "mean_completion_tokens": 3.2667300983190612,
+        "elapsed_seconds": 20.212412210996263,
+        "completion_tokens_per_second": 509.58786573709585
+      }
+    }
+  },
+  {
+    "run_id": "3ywwcwci",
+    "name": "qwen2.5-1.5b-base-zero-shot-sampling-t0.7-p0.8-k20",
+    "configuration": "base_zero_shot",
+    "mode": "sampling",
+    "state": "finished",
+    "created_at": "2026-08-20T11:53:47Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/3ywwcwci",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_base_zero_shot",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_k": 20,
+          "top_p": 0.8,
+          "do_sample": true,
+          "temperature": 0.7,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-base-zero-shot-sampling-t0.7-p0.8-k20"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 732,
+        "accuracy": 0.5549658832448825,
+        "parse_rate": 0.9962092494313874,
+        "format_rate": null,
+        "truncated": 5,
+        "mean_completion_tokens": 105.29264594389689,
+        "elapsed_seconds": 26.226131375995465,
+        "completion_tokens_per_second": 5295.51987706111
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 651,
+        "accuracy": 0.5402489626556016,
+        "parse_rate": 0.9933609958506224,
+        "format_rate": null,
+        "truncated": 6,
+        "mean_completion_tokens": 132.42572614107883,
+        "elapsed_seconds": 25.88008902000729,
+        "completion_tokens_per_second": 6165.859780336839
+      },
+      "math": {
+        "total": 5000,
+        "correct": 1425,
+        "accuracy": 0.285,
+        "parse_rate": 0.9088,
+        "format_rate": null,
+        "truncated": 467,
+        "mean_completion_tokens": 572.4828,
+        "elapsed_seconds": 212.2063517489878,
+        "completion_tokens_per_second": 13488.823385389798
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1573,
+        "accuracy": 0.49888994608309545,
+        "parse_rate": 0.9980970504281635,
+        "format_rate": null,
+        "truncated": 4,
+        "mean_completion_tokens": 4.9444973041547735,
+        "elapsed_seconds": 31.68036575501901,
+        "completion_tokens_per_second": 492.102904384244
+      }
+    }
+  },
+  {
+    "run_id": "vbtkd6z9",
+    "name": "qwen2.5-1.5b-base-zero-shot-cot",
+    "configuration": "base_zero_shot_cot",
+    "mode": "greedy",
+    "state": "finished",
+    "created_at": "2026-08-20T11:34:52Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/vbtkd6z9",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_base_zero_shot_cot",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_p": 1,
+          "do_sample": false,
+          "temperature": 0,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-base-zero-shot-cot"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 653,
+        "accuracy": 0.49507202426080366,
+        "parse_rate": 0.9575435936315392,
+        "format_rate": null,
+        "truncated": 85,
+        "mean_completion_tokens": 292.30932524639877,
+        "elapsed_seconds": 30.84558700400521,
+        "completion_tokens_per_second": 12499.551392876288
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 583,
+        "accuracy": 0.4838174273858921,
+        "parse_rate": 0.970954356846473,
+        "format_rate": null,
+        "truncated": 64,
+        "mean_completion_tokens": 271.02572614107885,
+        "elapsed_seconds": 28.95596955899964,
+        "completion_tokens_per_second": 11278.710572428256
+      },
+      "math": {
+        "total": 5000,
+        "correct": 1476,
+        "accuracy": 0.2952,
+        "parse_rate": 0.8466,
+        "format_rate": null,
+        "truncated": 805,
+        "mean_completion_tokens": 525.3298,
+        "elapsed_seconds": 179.93496885499917,
+        "completion_tokens_per_second": 14597.768386625774
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1534,
+        "accuracy": 0.4865207738661592,
+        "parse_rate": 0.9096098953377736,
+        "format_rate": null,
+        "truncated": 100,
+        "mean_completion_tokens": 128.3349191246432,
+        "elapsed_seconds": 62.44147622899618,
+        "completion_tokens_per_second": 6480.308033013733
+      }
+    }
+  },
+  {
+    "run_id": "tqi4gvl7",
+    "name": "qwen2.5-1.5b-base-zero-shot-cot-sampling-t0.7-p0.8-k20",
+    "configuration": "base_zero_shot_cot",
+    "mode": "sampling",
+    "state": "finished",
+    "created_at": "2026-08-20T11:59:20Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/tqi4gvl7",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_base_zero_shot_cot",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_k": 20,
+          "top_p": 0.8,
+          "do_sample": true,
+          "temperature": 0.7,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-base-zero-shot-cot-sampling-t0.7-p0.8-k20"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 591,
+        "accuracy": 0.4480667172100076,
+        "parse_rate": 0.976497346474602,
+        "format_rate": null,
+        "truncated": 16,
+        "mean_completion_tokens": 247.93479909021983,
+        "elapsed_seconds": 31.99574844999006,
+        "completion_tokens_per_second": 10220.920461077749
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 521,
+        "accuracy": 0.4323651452282158,
+        "parse_rate": 0.9784232365145228,
+        "format_rate": null,
+        "truncated": 20,
+        "mean_completion_tokens": 276.0929460580913,
+        "elapsed_seconds": 31.690406575013185,
+        "completion_tokens_per_second": 10498.192858854529
+      },
+      "math": {
+        "total": 5000,
+        "correct": 1398,
+        "accuracy": 0.2796,
+        "parse_rate": 0.9188,
+        "format_rate": null,
+        "truncated": 450,
+        "mean_completion_tokens": 437.6414,
+        "elapsed_seconds": 174.10975988899008,
+        "completion_tokens_per_second": 12567.974370851867
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1344,
+        "accuracy": 0.4262607040913416,
+        "parse_rate": 0.9197589597209008,
+        "format_rate": null,
+        "truncated": 67,
+        "mean_completion_tokens": 116.39708214398983,
+        "elapsed_seconds": 65.70976366099785,
+        "completion_tokens_per_second": 5585.166945560535
+      }
+    }
+  },
+  {
+    "run_id": "kvg0glkg",
+    "name": "qwen2.5-1.5b-base-few-shot-cot",
+    "configuration": "base_few_shot_cot",
+    "mode": "greedy",
+    "state": "finished",
+    "created_at": "2026-08-20T11:40:31Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/kvg0glkg",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_base",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_p": 1,
+          "do_sample": false,
+          "temperature": 0,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-base-few-shot-cot"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 846,
+        "accuracy": 0.6413949962092494,
+        "parse_rate": 0.9931766489764974,
+        "format_rate": null,
+        "truncated": 6,
+        "mean_completion_tokens": 113.32600454890068,
+        "elapsed_seconds": 30.856526421994204,
+        "completion_tokens_per_second": 4844.258811110196
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 701,
+        "accuracy": 0.5817427385892117,
+        "parse_rate": 0.9875518672199172,
+        "format_rate": null,
+        "truncated": 10,
+        "mean_completion_tokens": 146.19004149377594,
+        "elapsed_seconds": 32.24408351499005,
+        "completion_tokens_per_second": 5463.296853145319
+      },
+      "math": {
+        "total": 5000,
+        "correct": 1604,
+        "accuracy": 0.3208,
+        "parse_rate": 0.8946,
+        "format_rate": null,
+        "truncated": 508,
+        "mean_completion_tokens": 358.2034,
+        "elapsed_seconds": 169.7044407420035,
+        "completion_tokens_per_second": 10553.742684452369
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1334,
+        "accuracy": 0.4230891214716143,
+        "parse_rate": 0.7392959086584205,
+        "format_rate": null,
+        "truncated": 87,
+        "mean_completion_tokens": 142.50206152870282,
+        "elapsed_seconds": 74.17025771201588,
+        "completion_tokens_per_second": 6057.805566006684
+      }
+    }
+  },
+  {
+    "run_id": "y4z61d8u",
+    "name": "qwen2.5-1.5b-base-few-shot-cot-sampling-t0.7-p0.8-k20",
+    "configuration": "base_few_shot_cot",
+    "mode": "sampling",
+    "state": "finished",
+    "created_at": "2026-08-20T12:05:00Z",
+    "url": "https://wandb.ai/nothottryhard-msu/math-post-training/runs/y4z61d8u",
+    "config": {
+      "eval": {
+        "wandb": {
+          "enabled": true,
+          "log_predictions": true
+        },
+        "backend": "vllm",
+        "protocol": "qwen2_5_math_base",
+        "batch_size": 768,
+        "benchmarks": [
+          {
+            "name": "gsm8k",
+            "path": "openai/gsm8k",
+            "split": "test",
+            "subset": "main",
+            "adapter": "gsm8k",
+            "revision": "740312add88f781978c0658806c59bc2815b9866"
+          },
+          {
+            "name": "gsm1k",
+            "path": "ScaleAI/gsm1k",
+            "split": "test",
+            "subset": null,
+            "adapter": "gsm1k",
+            "revision": "bc09569d09a614b9b530edc7f076fb214ac10493"
+          },
+          {
+            "name": "math",
+            "path": "EleutherAI/hendrycks_math",
+            "split": "test",
+            "adapter": "hendrycks_math",
+            "subsets": [
+              "algebra",
+              "counting_and_probability",
+              "geometry",
+              "intermediate_algebra",
+              "number_theory",
+              "prealgebra",
+              "precalculus"
+            ],
+            "revision": "21a5633873b6a120296cce3e2df9d5550074f4a3"
+          },
+          {
+            "name": "mmlu_stem",
+            "path": "cais/mmlu",
+            "split": "test",
+            "adapter": "mmlu",
+            "subsets": [
+              "abstract_algebra",
+              "anatomy",
+              "astronomy",
+              "college_biology",
+              "college_chemistry",
+              "college_computer_science",
+              "college_mathematics",
+              "college_physics",
+              "computer_security",
+              "conceptual_physics",
+              "electrical_engineering",
+              "elementary_mathematics",
+              "high_school_biology",
+              "high_school_chemistry",
+              "high_school_computer_science",
+              "high_school_mathematics",
+              "high_school_physics",
+              "high_school_statistics",
+              "machine_learning"
+            ],
+            "revision": "c30699e8356da336a370243923dbaf21066bb9fe"
+          }
+        ],
+        "generation": {
+          "seed": 42,
+          "top_k": 20,
+          "top_p": 0.8,
+          "do_sample": true,
+          "temperature": 0.7,
+          "max_new_tokens": 2048,
+          "num_return_sequences": 1
+        },
+        "output_dir": "outputs/eval",
+        "sample_seed": 42,
+        "save_predictions": true,
+        "shuffle_buffer_size": 10000
+      },
+      "model": {
+        "dtype": "auto",
+        "name_or_path": "Qwen/Qwen2.5-1.5B",
+        "trust_remote_code": false
+      },
+      "experiment": {
+        "name": "qwen2.5-1.5b-base-few-shot-cot-sampling-t0.7-p0.8-k20"
+      },
+      "runtime_overrides": {
+        "limit": null,
+        "benchmarks": null
+      }
+    },
+    "metrics": {
+      "gsm8k": {
+        "total": 1319,
+        "correct": 779,
+        "accuracy": 0.5905989385898408,
+        "parse_rate": 0.9954510993176648,
+        "format_rate": null,
+        "truncated": 3,
+        "mean_completion_tokens": 109.26080363912054,
+        "elapsed_seconds": 32.43547619500896,
+        "completion_tokens_per_second": 4443.128848596212
+      },
+      "gsm1k": {
+        "total": 1205,
+        "correct": 655,
+        "accuracy": 0.5435684647302904,
+        "parse_rate": 0.991701244813278,
+        "format_rate": null,
+        "truncated": 4,
+        "mean_completion_tokens": 139.298755186722,
+        "elapsed_seconds": 34.39328744300292,
+        "completion_tokens_per_second": 4880.458149811118
+      },
+      "math": {
+        "total": 5000,
+        "correct": 1460,
+        "accuracy": 0.292,
+        "parse_rate": 0.9304,
+        "format_rate": null,
+        "truncated": 415,
+        "mean_completion_tokens": 350.2574,
+        "elapsed_seconds": 178.42879287200049,
+        "completion_tokens_per_second": 9815.047066177942
+      },
+      "mmlu_stem": {
+        "total": 3153,
+        "correct": 1291,
+        "accuracy": 0.4094513162067872,
+        "parse_rate": 0.7783063748810657,
+        "format_rate": null,
+        "truncated": 40,
+        "mean_completion_tokens": 113.12749762131304,
+        "elapsed_seconds": 75.72830677198363,
+        "completion_tokens_per_second": 4710.14096583447
+      }
+    }
+  }
+]

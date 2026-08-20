@@ -1,0 +1,27 @@
+{
+  "experiment": "Qwen2.5-1.5B vLLM greedy vs sampling baselines",
+  "date": "2026-08-20",
+  "repository_commit": "b8c3730",
+  "wandb": {
+    "entity": "nothottryhard-msu",
+    "project": "math-post-training",
+    "runs": [
+      "qac70va9",
+      "8oj7stws",
+      "w9en9spb",
+      "3ywwcwci",
+      "vbtkd6z9",
+      "tqi4gvl7",
+      "kvg0glkg",
+      "y4z61d8u"
+    ]
+  },
+  "benchmarks": [
+    "gsm8k",
+    "gsm1k",
+    "math",
+    "mmlu_stem"
+  ],
+  "sample_count_per_run": 10677,
+  "prediction_storage": "W&B tables; intentionally not duplicated in Git"
+}
