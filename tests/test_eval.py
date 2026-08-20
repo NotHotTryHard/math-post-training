@@ -73,10 +73,16 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
             self.exit_code = exit_code
 
     wandb_run = FakeRun()
+    wandb_init_kwargs = {}
+
+    def init_wandb(**kwargs):
+        wandb_init_kwargs.update(kwargs)
+        return wandb_run
+
     monkeypatch.setitem(
         sys.modules,
         "wandb",
-        SimpleNamespace(init=lambda **kwargs: wandb_run, Table=FakeTable),
+        SimpleNamespace(init=init_wandb, Table=FakeTable),
     )
     monkeypatch.setattr(
         eval,
@@ -133,6 +139,12 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
     assert wandb_run.summary["eval/gsm8k/accuracy"] == 1.0
     assert wandb_run.logged[-1]["eval/gsm8k/predictions"].rows
     assert wandb_run.exit_code == 0
+    assert wandb_init_kwargs["tags"] == [
+        "eval",
+        "transformers",
+        "qwen2_5_math_instruct",
+        "test-eval",
+    ]
 
 
 def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):

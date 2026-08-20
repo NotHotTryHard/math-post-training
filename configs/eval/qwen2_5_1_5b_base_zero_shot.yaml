@@ -18,7 +18,7 @@ eval:
   output_dir: outputs/eval
   sample_seed: 42
   shuffle_buffer_size: 10_000
-  batch_size: 4
+  batch_size: 768
   save_predictions: true
   wandb:
     enabled: true

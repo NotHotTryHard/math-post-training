@@ -26,13 +26,19 @@ class VLLMBackend:
         if not prompts:
             return []
 
+        sampling_kwargs = {
+            "n": config.num_return_sequences,
+            "max_tokens": config.max_new_tokens,
+            "temperature": config.temperature if config.do_sample else 0.0,
+            "top_p": config.top_p if config.do_sample else 1.0,
+            "seed": config.seed,
+            "stop": config.stop_strings,
+        }
+        if config.do_sample and config.top_k is not None:
+            sampling_kwargs["top_k"] = config.top_k
+
         sampling_params = self.sampling_params_class(
-            n=config.num_return_sequences,
-            max_tokens=config.max_new_tokens,
-            temperature=config.temperature if config.do_sample else 0.0,
-            top_p=config.top_p if config.do_sample else 1.0,
-            seed=config.seed,
-            stop=config.stop_strings,
+            **sampling_kwargs,
         )
         outputs = self.llm.generate(list(prompts), sampling_params, use_tqdm=False)
         return [

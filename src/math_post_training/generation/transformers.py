@@ -42,6 +42,8 @@ class TransformersBackend:
         if config.do_sample:
             generation_args["temperature"] = config.temperature
             generation_args["top_p"] = config.top_p
+            if config.top_k is not None:
+                generation_args["top_k"] = config.top_k
 
         with torch.inference_mode():
             output_ids = self.model.generate(**inputs, **generation_args)

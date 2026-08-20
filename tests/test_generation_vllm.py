@@ -62,6 +62,7 @@ def test_vllm_backend_maps_sampling_options_and_preserves_prompt_order(monkeypat
         do_sample=True,
         temperature=0.7,
         top_p=0.9,
+        top_k=20,
         seed=17,
         stop_strings=["Question:"],
     )
@@ -77,6 +78,7 @@ def test_vllm_backend_maps_sampling_options_and_preserves_prompt_order(monkeypat
         "max_tokens": 128,
         "temperature": 0.7,
         "top_p": 0.9,
+        "top_k": 20,
         "seed": 17,
         "stop": ["Question:"],
     }

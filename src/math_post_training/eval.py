@@ -386,12 +386,14 @@ def _start_wandb_run(
             "benchmarks": benchmark_names,
         },
     }
+    experiment_name = config["experiment"]["name"]
+    backend = config["eval"].get("backend", "transformers")
     run = wandb.init(
         project=os.getenv("WANDB_PROJECT") or "math-post-training",
         entity=os.getenv("WANDB_ENTITY") or None,
-        name=config["experiment"]["name"],
+        name=experiment_name,
         job_type="eval",
-        tags=["eval", protocol],
+        tags=["eval", backend, protocol, experiment_name],
         config=tracked_config,
         dir=str(run_dir),
     )
