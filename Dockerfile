@@ -27,4 +27,9 @@ COPY tests/ ./tests/
 RUN uv sync --no-cache --frozen \
         --group dev --group train --group eval --group vllm
 
+# vLLM 0.26 enables the FlashInfer sampler by default. Its PyPI wheel omits
+# the precompiled kernels, so verify that the separately locked CUDA 13 cache
+# contains the sampler and will not fall back to runtime nvcc compilation.
+RUN python -c "from flashinfer.jit.sampling import gen_sampling_module; assert gen_sampling_module().is_aot"
+
 CMD ["sleep", "infinity"]

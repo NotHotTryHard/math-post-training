@@ -660,6 +660,23 @@ wheels = [
 ]
 
 [[package]]
+name = "flashinfer-cubin"
+version = "0.6.14"
+source = { registry = "https://flashinfer.ai/whl" }
+wheels = [
+    { url = "https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.14/flashinfer_cubin-0.6.14-py3-none-any.whl", hash = "sha256:7bbed9f3851b59f3f6f6cb344810775bbce8a1c012ecf9a502bebd91cfb6433e" },
+]
+
+[[package]]
+name = "flashinfer-jit-cache"
+version = "0.6.14+cu130"
+source = { registry = "https://flashinfer.ai/whl/cu130" }
+wheels = [
+    { url = "https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.14/flashinfer_jit_cache-0.6.14+cu130-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:c54c356db35107354deb05b6f40cc2b0c830034f6035efcb267dcfcd090249fd" },
+    { url = "https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.14/flashinfer_jit_cache-0.6.14+cu130-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:22b666dffe4cca7de0ea67668c16c0be819e8a67cdb34c404cf89abeb3d2b510" },
+]
+
+[[package]]
 name = "flashinfer-python"
 version = "0.6.14"
 source = { registry = "https://pypi.org/simple" }
@@ -1135,6 +1152,8 @@ train = [
     { name = "wandb" },
 ]
 vllm = [
+    { name = "flashinfer-cubin", marker = "sys_platform == 'linux'" },
+    { name = "flashinfer-jit-cache", marker = "sys_platform == 'linux'" },
     { name = "vllm", marker = "sys_platform == 'linux'" },
 ]
 
@@ -1163,7 +1182,11 @@ train = [
     { name = "trl", specifier = ">=1.9,<2" },
     { name = "wandb", specifier = ">=0.28,<0.29" },
 ]
-vllm = [{ name = "vllm", marker = "sys_platform == 'linux'", specifier = "==0.26.0" }]
+vllm = [
+    { name = "flashinfer-cubin", marker = "sys_platform == 'linux'", specifier = "==0.6.14", index = "https://flashinfer.ai/whl" },
+    { name = "flashinfer-jit-cache", marker = "sys_platform == 'linux'", specifier = "==0.6.14", index = "https://flashinfer.ai/whl/cu130" },
+    { name = "vllm", marker = "sys_platform == 'linux'", specifier = "==0.26.0" },
+]
 
 [[package]]
 name = "math-verify"
@@ -2746,7 +2769,6 @@ dependencies = [
     { name = "ml-dtypes" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" } },
     { name = "psutil" },
-    { name = "setuptools", version = "80.10.2", source = { registry = "https://pypi.org/simple" }, marker = "python_version < '0'" },
     { name = "torch" },
     { name = "torch-c-dlpack-ext" },
     { name = "tqdm" },
