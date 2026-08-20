@@ -2,15 +2,24 @@
 
 
 def to_sft_example(example):
-    """Keep the demonstrated solution used as the SFT target."""
+    """Build a conversational prompt-completion row for TRL SFT."""
 
     if not example["solution"]:
         raise ValueError("SFT example has no solution")
 
     return {
-        "problem": example["problem"],
-        "completion": example["solution"],
-        "source": example["source"],
+        "prompt": [
+            {
+                "role": "user",
+                "content": example["problem"],
+            }
+        ],
+        "completion": [
+            {
+                "role": "assistant",
+                "content": example["solution"],
+            }
+        ],
     }
 
 
