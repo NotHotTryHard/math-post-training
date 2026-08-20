@@ -6,8 +6,14 @@ model:
   dtype: auto
   trust_remote_code: false
 
+vllm:
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.9
+  max_model_len: 32768
+  enable_prefix_caching: true
+
 eval:
-  backend: transformers
+  backend: vllm
   protocol: qwen2_5_math_base_zero_shot
   output_dir: outputs/eval
   sample_seed: 42

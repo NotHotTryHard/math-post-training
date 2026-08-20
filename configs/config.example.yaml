@@ -6,6 +6,12 @@ model:
   dtype: auto
   trust_remote_code: false
 
+vllm:
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.9
+  max_model_len: 32768
+  enable_prefix_caching: true
+
 dataset:
   seed: 42
   stopping_strategy: all_exhausted_without_replacement
@@ -33,7 +39,7 @@ dataset:
       probability: 0.1
 
 inference:
-  backend: transformers
+  backend: vllm
   max_new_tokens: 256
   num_return_sequences: 4
   do_sample: true
@@ -42,7 +48,7 @@ inference:
   seed: 42
 
 eval:
-  backend: transformers
+  backend: vllm
   protocol: qwen2_5_math_base
   output_dir: outputs/eval
   sample_seed: 42

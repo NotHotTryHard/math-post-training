@@ -51,6 +51,17 @@ model-generate --show-prompt "Write a short story about a robot"
 Логика построения этой строки целиком находится в `prompts/inference.py`; CLI только загружает
 модель, вызывает её и печатает completion.
 
+По умолчанию inference и evaluation используют in-process vLLM backend. Параметры движка
+`tensor_parallel_size`, `gpu_memory_utilization`, `max_model_len` и prefix caching находятся в
+верхнеуровневой секции `vllm`. Для отладки без vLLM можно вернуть `backend: transformers`; флаг
+`--device` относится только к этому backend-у.
+
+Контейнер с vLLM нужно запускать с доступом к NVIDIA GPU и достаточной shared memory, например:
+
+```bash
+docker run --gpus all --ipc=host math-post-training
+```
+
 ## Evaluation
 
 Evaluation запускается отдельно от train-зависимостей:
@@ -155,7 +166,7 @@ src/math_post_training/
 ├── generation/
 │   ├── base.py          # Общий контракт и backend-neutral параметры.
 │   ├── transformers.py  # Адаптер для transformers.generate.
-│   └── vllm.py          # Явная заглушка будущего vLLM backend-а.
+│   └── vllm.py          # In-process offline inference через vLLM.
 └── verifiers/
     ├── extraction.py    # Извлечение финального ответа из completion.
     ├── math.py          # Numeric/symbolic equivalence через Math-Verify.

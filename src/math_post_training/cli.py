@@ -8,6 +8,7 @@ import torch
 from math_post_training.config import load_yaml_config
 from math_post_training.generation.base import GenerationConfig
 from math_post_training.generation.transformers import TransformersBackend
+from math_post_training.generation.vllm import VLLMBackend
 from math_post_training.model import load_model_and_tokenizer
 from math_post_training.prompts.inference import build_inference_prompt
 
@@ -25,11 +26,15 @@ def _device(requested):
 
 
 def _generate_parser():
-    parser = argparse.ArgumentParser(description="Generate text with a Transformers causal LM")
+    parser = argparse.ArgumentParser(description="Generate text with a causal language model")
     parser.add_argument("prompt")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--model", help="override model.name_or_path")
-    parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="Transformers device; vLLM selects its accelerator from the environment",
+    )
     parser.add_argument("--system")
     parser.add_argument("--raw", action="store_true", help="do not apply a chat template")
     parser.add_argument(
@@ -50,14 +55,12 @@ def generate_main(argv=None):
 
     generation_config = dict(config["inference"])
     backend_name = generation_config.pop("backend")
-    if backend_name != "transformers":
-        raise ValueError(
-            f"model-generate only supports the transformers backend, got {backend_name!r}"
-        )
-
-    device = _device(args.device)
-    model, tokenizer = load_model_and_tokenizer(**model_config, device=device)
-    backend = TransformersBackend(model, tokenizer, device)
+    backend, tokenizer = _load_backend(
+        backend_name,
+        model_config,
+        device=args.device,
+        vllm_config=config.get("vllm", {}),
+    )
 
     prompt = build_inference_prompt(
         tokenizer,
@@ -115,12 +118,12 @@ def eval_main(argv=None):
         model_config["name_or_path"] = args.model
 
     backend_name = config["eval"]["backend"]
-    if backend_name != "transformers":
-        raise ValueError(f"model-eval does not support backend {backend_name!r} yet")
-
-    device = _device(args.device)
-    model, tokenizer = load_model_and_tokenizer(**model_config, device=device)
-    backend = TransformersBackend(model, tokenizer, device)
+    backend, tokenizer = _load_backend(
+        backend_name,
+        model_config,
+        device=args.device,
+        vllm_config=config.get("vllm", {}),
+    )
 
     from math_post_training.eval import eval_model
 
@@ -135,6 +138,22 @@ def eval_main(argv=None):
     )
     print(f"Results: {run_dir}")
     return 0
+
+
+def _load_backend(backend_name, model_config, *, device, vllm_config):
+    if backend_name == "transformers":
+        resolved_device = _device(device)
+        model, tokenizer = load_model_and_tokenizer(
+            **model_config,
+            device=resolved_device,
+        )
+        return TransformersBackend(model, tokenizer, resolved_device), tokenizer
+
+    if backend_name == "vllm":
+        backend = VLLMBackend(**model_config, **vllm_config)
+        return backend, backend.tokenizer
+
+    raise ValueError(f"Unknown generation backend: {backend_name!r}")
 
 
 if __name__ == "__main__":
