@@ -5,9 +5,11 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         gcc \
+        curl \
         libc6-dev \
         libnuma1 \
-        tmux && \
+        tmux \
+        unzip && \
     rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -28,9 +30,17 @@ RUN uv sync --no-cache --frozen \
         --group dev --group train --group eval --group vllm
 
 # vLLM 0.26 enables the FlashInfer sampler by default. Its PyPI wheel omits
-# the precompiled kernels, so verify that the separately locked CUDA 13 cache
-# contains the sampler. Inspect the cache directly because Docker builds do not
-# have a GPU on which FlashInfer could perform its architecture check.
-RUN python -c "from pathlib import Path; import flashinfer_jit_cache as cache; assert (Path(cache.get_jit_cache_dir()) / 'sampling' / 'sampling.so').is_file()"
+# the precompiled kernels. The complete JIT cache is several GB unpacked, while
+# this image only needs its sampler module, so keep just that file.
+RUN curl -fL --retry 5 \
+        -o /tmp/flashinfer-jit-cache.whl \
+        "https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.14/flashinfer_jit_cache-0.6.14%2Bcu130-cp39-abi3-manylinux_2_28_x86_64.whl" && \
+    echo "22b666dffe4cca7de0ea67668c16c0be819e8a67cdb34c404cf89abeb3d2b510  /tmp/flashinfer-jit-cache.whl" | sha256sum -c - && \
+    mkdir -p /app/.venv/lib/python3.12/site-packages/flashinfer/data/aot/sampling && \
+    unzip -j /tmp/flashinfer-jit-cache.whl \
+        "*/flashinfer_jit_cache/jit_cache/sampling/sampling.so" \
+        -d /app/.venv/lib/python3.12/site-packages/flashinfer/data/aot/sampling && \
+    rm /tmp/flashinfer-jit-cache.whl && \
+    test -f /app/.venv/lib/python3.12/site-packages/flashinfer/data/aot/sampling/sampling.so
 
 CMD ["sleep", "infinity"]

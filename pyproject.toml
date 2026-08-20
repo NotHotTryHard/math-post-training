@@ -38,7 +38,6 @@ train = [
 ]
 vllm = [
     "flashinfer-cubin==0.6.14; sys_platform == 'linux'",
-    "flashinfer-jit-cache==0.6.14; sys_platform == 'linux'",
     "vllm==0.26.0; sys_platform == 'linux'",
 ]
 
@@ -50,14 +49,8 @@ name = "flashinfer"
 url = "https://flashinfer.ai/whl"
 explicit = true
 
-[[tool.uv.index]]
-name = "flashinfer-cu130"
-url = "https://flashinfer.ai/whl/cu130"
-explicit = true
-
 [tool.uv.sources]
 flashinfer-cubin = { index = "flashinfer" }
-flashinfer-jit-cache = { index = "flashinfer-cu130" }
 
 [tool.ruff]
 line-length = 100
