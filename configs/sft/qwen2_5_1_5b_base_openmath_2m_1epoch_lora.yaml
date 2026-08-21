@@ -7,8 +7,8 @@ model:
   trust_remote_code: false
 
 lora:
-  r: 64
-  lora_alpha: 128
+  r: 32
+  lora_alpha: 64
   lora_dropout: 0.05
   target_modules: all-linear
   bias: none

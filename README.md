@@ -38,6 +38,13 @@ uv sync --group train
 model-sft --config configs/current.yaml
 ```
 
+Первичные OpenMathInstruct-2 прогоны запускаются отдельными полными конфигами:
+
+```bash
+model-sft --config configs/sft/qwen2_5_1_5b_base_openmath_1m_1epoch_lora.yaml
+model-sft --config configs/sft/qwen2_5_1_5b_base_openmath_1m_1epoch_rslora.yaml
+```
+
 Исходная модель берётся из `model.name_or_path`. Адаптер сохраняется в
 `<sft.output_dir>/adapter`, а совместимый с vLLM объединённый checkpoint — непосредственно в
 `sft.output_dir`.
