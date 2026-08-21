@@ -1,10 +1,18 @@
 experiment:
-  name: qwen2.5-1.5b-base-openmath-2m-1epoch
+  name: qwen2.5-1.5b-base-openmath-2m-1epoch-lora
 
 model:
   name_or_path: Qwen/Qwen2.5-1.5B
   dtype: auto
   trust_remote_code: false
+
+lora:
+  r: 64
+  lora_alpha: 128
+  lora_dropout: 0.05
+  target_modules: all-linear
+  bias: none
+  task_type: CAUSAL_LM
 
 vllm:
   tensor_parallel_size: 1
@@ -23,17 +31,17 @@ dataset:
       shuffle_seed: 42
 
 sft:
-  output_dir: /workspace/outputs/sft/qwen2.5-1.5b-base-openmath-2m-1epoch
+  output_dir: /workspace/outputs/sft/qwen2.5-1.5b-base-openmath-2m-1epoch-lora
   max_length: 4096
   num_train_epochs: 1.0
-  per_device_train_batch_size: 8
-  gradient_accumulation_steps: 8
-  learning_rate: 2.0e-5
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
   lr_scheduler_type: constant
   weight_decay: 1.0e-2
   optim: adamw_torch_fused
   completion_only_loss: true
-  packing: true
+  packing: false
   dataset_num_proc: 16
   dataloader_num_workers: 4
   bf16: true
@@ -59,7 +67,7 @@ inference:
 eval:
   backend: vllm
   protocol: qwen2_5_math_base
-  output_dir: /workspace/outputs/eval/qwen2.5-1.5b-base-openmath-2m-1epoch
+  output_dir: /workspace/outputs/eval/qwen2.5-1.5b-base-openmath-2m-1epoch-lora
   sample_seed: 42
   shuffle_buffer_size: 10_000
   batch_size: 8

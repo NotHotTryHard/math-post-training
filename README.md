@@ -30,14 +30,17 @@ revision, split, streaming и ограничение числа примеров
 
 ## Supervised fine-tuning
 
-SFT запускается независимо от evaluation:
+SFT запускается независимо от evaluation. Обучается LoRA-адаптер, параметры которого находятся
+в секции `lora` экспериментального конфига:
 
 ```bash
 uv sync --group train
 model-sft --config configs/current.yaml
 ```
 
-Исходная модель берётся из `model.name_or_path`, а итоговая сохраняется в `sft.output_dir`.
+Исходная модель берётся из `model.name_or_path`. Адаптер сохраняется в
+`<sft.output_dir>/adapter`, а совместимый с vLLM объединённый checkpoint — непосредственно в
+`sft.output_dir`.
 Текущие `max_steps: 20` предназначены для первого GPU smoke-run. Продолжить прерванный запуск
 можно из полного checkpoint-а Trainer:
 

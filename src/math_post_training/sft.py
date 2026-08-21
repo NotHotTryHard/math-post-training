@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from peft import LoraConfig
 from transformers import AutoTokenizer
 from trl import SFTConfig, SFTTrainer
 
@@ -18,6 +19,7 @@ def train_sft(config, *, resume_from_checkpoint=None):
     model_name = model_config["name_or_path"]
     training_config = dict(config["sft"])
     output_dir = Path(training_config["output_dir"])
+    lora_config = LoraConfig(**config["lora"])
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -50,13 +52,20 @@ def train_sft(config, *, resume_from_checkpoint=None):
         args=SFTConfig(**training_config),
         train_dataset=dataset,
         processing_class=tokenizer,
+        peft_config=lora_config,
     )
     trainer.train(
         resume_from_checkpoint=(
             str(resume_from_checkpoint) if resume_from_checkpoint is not None else None
         )
     )
-    trainer.save_model()
+    adapter_dir = output_dir / "adapter"
+    trainer.save_model(adapter_dir)
+    tokenizer.save_pretrained(adapter_dir)
+
+    model = trainer.accelerator.unwrap_model(trainer.model)
+    merged_model = model.merge_and_unload()
+    merged_model.save_pretrained(output_dir, safe_serialization=True)
     tokenizer.save_pretrained(output_dir)
 
     return output_dir

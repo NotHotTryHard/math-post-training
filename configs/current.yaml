@@ -1,10 +1,18 @@
 experiment:
-  name: qwen2.5-1.5b-instruct-baseline
+  name: qwen2.5-1.5b-instruct-gsm8k-lora
 
 model:
   name_or_path: Qwen/Qwen2.5-1.5B-Instruct
   dtype: auto
   trust_remote_code: false
+
+lora:
+  r: 64
+  lora_alpha: 128
+  lora_dropout: 0.05
+  target_modules: all-linear
+  bias: none
+  task_type: CAUSAL_LM
 
 vllm:
   tensor_parallel_size: 1
@@ -25,14 +33,14 @@ dataset:
       limit: 100
 
 sft:
-  output_dir: outputs/sft/qwen2.5-1.5b-instruct-gsm8k
+  output_dir: outputs/sft/qwen2.5-1.5b-instruct-gsm8k-lora
   max_length: 4096
   max_steps: 20
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 4
-  learning_rate: 2.0e-5
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
   completion_only_loss: true
-  packing: true
+  packing: false
   bf16: true
   tf32: true
   gradient_checkpointing: false
