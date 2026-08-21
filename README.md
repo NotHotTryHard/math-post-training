@@ -25,8 +25,35 @@ revision, split, streaming и ограничение числа примеров
 источниках и определяет вероятность выбрать источник при получении следующей строки смеси.
 
 Для локальной разработки скопируй `.env.example` в `.env` и подставь свои значения. Сам файл
-`.env` игнорируется git. Конфиги обучения и W&B появятся тогда же, когда появится соответствующий
-training-код: сейчас YAML не притворяется, будто уже реализованные стадии существуют.
+`.env` игнорируется git. Параметры supervised fine-tuning находятся в секции `sft`; секция
+`eval` используется только отдельной командой evaluation.
+
+## Supervised fine-tuning
+
+SFT запускается независимо от evaluation:
+
+```bash
+uv sync --group train
+model-sft --config configs/current.yaml
+```
+
+Исходная модель берётся из `model.name_or_path`, а итоговая сохраняется в `sft.output_dir`.
+Текущие `max_steps: 20` предназначены для первого GPU smoke-run. Продолжить прерванный запуск
+можно из полного checkpoint-а Trainer:
+
+```bash
+model-sft \
+  --config configs/current.yaml \
+  --resume-from-checkpoint outputs/sft/qwen2.5-1.5b-instruct-gsm8k/checkpoint-10
+```
+
+Команда не запускает evaluation автоматически. Полученный checkpoint проверяется явно:
+
+```bash
+model-eval \
+  --config configs/current.yaml \
+  --model outputs/sft/qwen2.5-1.5b-instruct-gsm8k
+```
 
 ## Локальная генерация
 
@@ -154,6 +181,7 @@ src/math_post_training/
 ├── cli.py               # Тонкая сборка model + prompt + generation для CLI.
 ├── config.py            # Загрузка YAML-конфигурации.
 ├── model.py             # Общая загрузка model/tokenizer из HF или checkpoint-а.
+├── sft.py               # Независимый запуск supervised fine-tuning через TRL.
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── inference.py     # Prompt для ручного model-generate.
 │   └── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
@@ -173,5 +201,4 @@ src/math_post_training/
     └── choice.py        # Exact-match для multiple-choice ответов.
 ```
 
-Пустых `train.py` и `rewards.py` пока намеренно нет: они появятся вместе с первой рабочей SFT
-стадией, чтобы наличие файла не создавало впечатление, будто за ним уже стоит реализованный путь.
+GRPO и reward functions будут добавлены отдельной стадией; `model-sft` их не запускает.
