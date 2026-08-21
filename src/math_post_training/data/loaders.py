@@ -60,7 +60,12 @@ def split_train_validation(dataset, config):
             seed=seed,
             buffer_size=config.get("shuffle_buffer_size", 10_000),
         )
-        return shuffled.skip(size), shuffled.take(size)
+        train_dataset = shuffled.skip(size)
+        validation_dataset = shuffled.take(size)
+        if config.get("replay_streaming", False):
+            train_dataset = _make_replayable(train_dataset)
+            validation_dataset = _make_replayable(validation_dataset)
+        return train_dataset, validation_dataset
 
     if size >= len(dataset):
         raise ValueError(
@@ -115,4 +120,13 @@ def load_math_source(config):
         normalize,
         remove_columns=original_columns,
         features=NORMALIZED_FEATURES,
+    )
+
+
+def _make_replayable(dataset):
+    """Replay one fixed iterable sequence without reshuffling its data sources."""
+
+    return IterableDataset.from_generator(
+        lambda: iter(dataset),
+        features=dataset.features,
     )

@@ -1,5 +1,5 @@
 import pytest
-from datasets import ClassLabel, Dataset
+from datasets import ClassLabel, Dataset, Features, IterableDataset, Value
 
 from math_post_training.data import loaders
 from math_post_training.data.preprocessing import to_grpo_example, to_sft_example
@@ -204,3 +204,30 @@ def test_validation_holdout_rejects_the_whole_dataset():
 
     with pytest.raises(ValueError, match="smaller than the training dataset"):
         loaders.split_train_validation(dataset, {"size": 2})
+
+
+def test_streaming_holdout_can_replay_the_same_sequence_across_epochs():
+    features = Features({"problem": Value("string")})
+    dataset = IterableDataset.from_generator(
+        lambda: ({"problem": f"problem-{index}"} for index in range(12)),
+        features=features,
+    ).take(10)
+
+    train, validation = loaders.split_train_validation(
+        dataset,
+        {
+            "size": 2,
+            "seed": 42,
+            "shuffle_buffer_size": 4,
+            "replay_streaming": True,
+        },
+    )
+
+    epochs = []
+    for epoch in range(3):
+        train.set_epoch(epoch)
+        epochs.append([row["problem"] for row in train])
+
+    assert len(epochs[0]) == 8
+    assert epochs[0] == epochs[1] == epochs[2]
+    assert set(epochs[0]).isdisjoint(row["problem"] for row in validation)
