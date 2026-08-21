@@ -1,0 +1,130 @@
+experiment:
+  name: qwen2.5-1.5b-base-openmath-1m-2epochs
+
+model:
+  name_or_path: Qwen/Qwen2.5-1.5B
+  dtype: auto
+  trust_remote_code: false
+
+vllm:
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.9
+  max_model_len: 32768
+  enable_prefix_caching: true
+
+dataset:
+  sources:
+    - adapter: open_math_instruct_2
+      path: nvidia/OpenMathInstruct-2
+      subset: null
+      revision: 469216e3f46f4dacf476b382e192485ea51a143e
+      split: train_1M
+      streaming: false
+      shuffle_seed: 42
+
+sft:
+  output_dir: /workspace/outputs/sft/qwen2.5-1.5b-base-openmath-1m-2epochs
+  max_length: 4096
+  num_train_epochs: 2.0
+  per_device_train_batch_size: 8
+  gradient_accumulation_steps: 8
+  learning_rate: 2.0e-5
+  lr_scheduler_type: constant
+  weight_decay: 1.0e-2
+  optim: adamw_torch_fused
+  completion_only_loss: true
+  packing: true
+  dataset_num_proc: 16
+  dataloader_num_workers: 4
+  bf16: true
+  tf32: true
+  gradient_checkpointing: false
+  logging_steps: 10
+  include_num_input_tokens_seen: all
+  save_steps: 500
+  save_total_limit: 2
+  report_to: wandb
+  seed: 42
+  data_seed: 42
+
+inference:
+  backend: vllm
+  max_new_tokens: 256
+  num_return_sequences: 4
+  do_sample: true
+  temperature: 0.8
+  top_p: 0.95
+  seed: 42
+
+eval:
+  backend: vllm
+  protocol: qwen2_5_math_base
+  output_dir: /workspace/outputs/eval/qwen2.5-1.5b-base-openmath-1m-2epochs
+  sample_seed: 42
+  shuffle_buffer_size: 10_000
+  batch_size: 8
+  save_predictions: true
+  wandb:
+    enabled: true
+    log_predictions: true
+  generation:
+    max_new_tokens: 2048
+    num_return_sequences: 1
+    do_sample: false
+    temperature: 0.0
+    top_p: 1.0
+    seed: 42
+  benchmarks:
+    - name: gsm8k
+      adapter: gsm8k
+      path: openai/gsm8k
+      subset: main
+      revision: 740312add88f781978c0658806c59bc2815b9866
+      split: test
+
+    - name: gsm1k
+      adapter: gsm1k
+      path: ScaleAI/gsm1k
+      subset: null
+      revision: bc09569d09a614b9b530edc7f076fb214ac10493
+      split: test
+
+    - name: math
+      adapter: hendrycks_math
+      path: EleutherAI/hendrycks_math
+      subsets:
+        - algebra
+        - counting_and_probability
+        - geometry
+        - intermediate_algebra
+        - number_theory
+        - prealgebra
+        - precalculus
+      revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
+      split: test
+
+    - name: mmlu_stem
+      adapter: mmlu
+      path: cais/mmlu
+      revision: c30699e8356da336a370243923dbaf21066bb9fe
+      split: test
+      subsets:
+        - abstract_algebra
+        - anatomy
+        - astronomy
+        - college_biology
+        - college_chemistry
+        - college_computer_science
+        - college_mathematics
+        - college_physics
+        - computer_security
+        - conceptual_physics
+        - electrical_engineering
+        - elementary_mathematics
+        - high_school_biology
+        - high_school_chemistry
+        - high_school_computer_science
+        - high_school_mathematics
+        - high_school_physics
+        - high_school_statistics
+        - machine_learning
