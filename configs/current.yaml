@@ -24,6 +24,24 @@ dataset:
       shuffle_buffer_size: 10_000
       limit: 100
 
+sft:
+  output_dir: outputs/sft/qwen2.5-1.5b-instruct-gsm8k
+  max_length: 4096
+  max_steps: 20
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-5
+  completion_only_loss: true
+  packing: true
+  bf16: true
+  tf32: true
+  gradient_checkpointing: false
+  logging_steps: 1
+  save_steps: 10
+  save_total_limit: 2
+  report_to: wandb
+  seed: 42
+
 inference:
   backend: vllm
   max_new_tokens: 256
