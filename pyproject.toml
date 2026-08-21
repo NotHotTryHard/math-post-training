@@ -14,6 +14,7 @@ dependencies = [
 [project.scripts]
 model-generate = "math_post_training.cli:generate_main"
 model-eval = "math_post_training.cli:eval_main"
+model-sft = "math_post_training.cli:sft_main"
 
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12"]

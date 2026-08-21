@@ -140,6 +140,27 @@ def eval_main(argv=None):
     return 0
 
 
+def _sft_parser():
+    parser = argparse.ArgumentParser(description="Supervised fine-tune a causal language model")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument("--resume-from-checkpoint", type=Path)
+    return parser
+
+
+def sft_main(argv=None):
+    args = _sft_parser().parse_args(argv)
+    config = load_yaml_config(args.config)
+
+    from math_post_training.sft import train_sft
+
+    output_dir = train_sft(
+        config,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+    )
+    print(f"Model: {output_dir}")
+    return 0
+
+
 def _load_backend(backend_name, model_config, *, device, vllm_config):
     if backend_name == "transformers":
         resolved_device = _device(device)
