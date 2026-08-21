@@ -1,6 +1,6 @@
 """Load and normalize mathematical datasets."""
 
-from datasets import Features, Value, interleave_datasets, load_dataset
+from datasets import Features, IterableDataset, Value, interleave_datasets, load_dataset
 
 from math_post_training.data.sources import (
     gsm1k,
@@ -45,6 +45,30 @@ def load_math_dataset(config):
         seed=config["seed"],
         stopping_strategy=config["stopping_strategy"],
     )
+
+
+def split_train_validation(dataset, config):
+    """Remove a deterministic validation holdout from a training dataset."""
+
+    size = config["size"]
+    if size < 1:
+        raise ValueError("dataset.validation.size must be positive")
+
+    seed = config.get("seed", 42)
+    if isinstance(dataset, IterableDataset):
+        shuffled = dataset.shuffle(
+            seed=seed,
+            buffer_size=config.get("shuffle_buffer_size", 10_000),
+        )
+        return shuffled.skip(size), shuffled.take(size)
+
+    if size >= len(dataset):
+        raise ValueError(
+            "dataset.validation.size must be smaller than the training dataset"
+        )
+
+    split = dataset.train_test_split(test_size=size, seed=seed)
+    return split["train"], split["test"]
 
 
 def load_math_source(config):

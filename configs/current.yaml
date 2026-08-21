@@ -21,6 +21,10 @@ vllm:
   enable_prefix_caching: true
 
 dataset:
+  validation:
+    size: 20
+    seed: 42
+    shuffle_buffer_size: 10_000
   sources:
     - adapter: gsm8k
       path: openai/gsm8k
@@ -45,8 +49,16 @@ sft:
   tf32: true
   gradient_checkpointing: false
   logging_steps: 1
+  eval_strategy: steps
+  eval_steps: 10
+  per_device_eval_batch_size: 4
+  prediction_loss_only: true
+  save_strategy: steps
   save_steps: 10
   save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
   report_to: wandb
   seed: 42
 

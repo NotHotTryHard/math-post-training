@@ -26,7 +26,7 @@ revision, split, streaming и ограничение числа примеров
 
 Для локальной разработки скопируй `.env.example` в `.env` и подставь свои значения. Сам файл
 `.env` игнорируется git. Параметры supervised fine-tuning находятся в секции `sft`; секция
-`eval` используется только отдельной командой evaluation.
+`eval` используется только отдельной командой benchmark evaluation.
 
 ## Supervised fine-tuning
 
@@ -48,6 +48,11 @@ model-sft --config configs/sft/qwen2_5_1_5b_base_openmath_1m_1epoch_rslora.yaml
 Исходная модель берётся из `model.name_or_path`. Адаптер сохраняется в
 `<sft.output_dir>/adapter`, а совместимый с vLLM объединённый checkpoint — непосредственно в
 `sft.output_dir`.
+`dataset.validation` задаёт детерминированный holdout, который исключается из training split.
+Во время обучения TRL пишет `eval_loss` в W&B на шагах `sft.eval_steps`, а после последней
+проверки восстанавливает лучший checkpoint перед сохранением адаптера и объединённой модели.
+Это внутренняя validation для выбора checkpoint-а; GSM1k, GSM8K, MATH и MMLU-STEM остаются
+нетронутыми внешними benchmarks и запускаются отдельно через `model-eval`.
 Текущие `max_steps: 20` предназначены для первого GPU smoke-run. Продолжить прерванный запуск
 можно из полного checkpoint-а Trainer:
 

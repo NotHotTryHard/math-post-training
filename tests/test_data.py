@@ -184,3 +184,23 @@ def test_one_source_uses_the_same_sources_shape(monkeypatch):
     dataset = loaders.load_math_dataset({"sources": [{"name": "only"}]})
 
     assert dataset is source_dataset
+
+
+def test_validation_holdout_is_deterministic_and_removed_from_training():
+    dataset = Dataset.from_dict({"problem": [f"problem-{index}" for index in range(10)]})
+    config = {"size": 3, "seed": 42}
+
+    train_a, validation_a = loaders.split_train_validation(dataset, config)
+    train_b, validation_b = loaders.split_train_validation(dataset, config)
+
+    assert len(train_a) == 7
+    assert len(validation_a) == 3
+    assert validation_a["problem"] == validation_b["problem"]
+    assert set(train_a["problem"]).isdisjoint(validation_a["problem"])
+
+
+def test_validation_holdout_rejects_the_whole_dataset():
+    dataset = Dataset.from_dict({"problem": ["one", "two"]})
+
+    with pytest.raises(ValueError, match="smaller than the training dataset"):
+        loaders.split_train_validation(dataset, {"size": 2})

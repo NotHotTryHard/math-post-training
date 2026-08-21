@@ -6,7 +6,10 @@ from peft import LoraConfig
 from transformers import AutoTokenizer
 from trl import SFTConfig, SFTTrainer
 
-from math_post_training.data.loaders import load_math_dataset
+from math_post_training.data.loaders import (
+    load_math_dataset,
+    split_train_validation,
+)
 from math_post_training.data.preprocessing import to_sft_example
 
 QWEN_CHAT_EOS_TOKEN = "<|im_end|>"
@@ -30,14 +33,18 @@ def train_sft(config, *, resume_from_checkpoint=None):
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    dataset = load_math_dataset(config["dataset"])
-    original_columns = dataset.column_names
-    if original_columns is None:
-        raise ValueError("Training dataset does not expose its column names")
-    dataset = dataset.map(
-        to_sft_example,
-        remove_columns=original_columns,
-    )
+    train_dataset = load_math_dataset(config["dataset"])
+    eval_dataset = None
+    validation_config = config["dataset"].get("validation")
+    if validation_config is not None:
+        train_dataset, eval_dataset = split_train_validation(
+            train_dataset,
+            validation_config,
+        )
+
+    train_dataset = _prepare_dataset(train_dataset, name="Training")
+    if eval_dataset is not None:
+        eval_dataset = _prepare_dataset(eval_dataset, name="Validation")
 
     training_config.setdefault("run_name", config["experiment"]["name"])
     training_config["output_dir"] = str(output_dir)
@@ -50,7 +57,8 @@ def train_sft(config, *, resume_from_checkpoint=None):
     trainer = SFTTrainer(
         model=model_name,
         args=SFTConfig(**training_config),
-        train_dataset=dataset,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         processing_class=tokenizer,
         peft_config=lora_config,
     )
@@ -69,3 +77,15 @@ def train_sft(config, *, resume_from_checkpoint=None):
     tokenizer.save_pretrained(output_dir)
 
     return output_dir
+
+
+def _prepare_dataset(dataset, *, name):
+    """Convert one normalized math split into TRL's conversational format."""
+
+    original_columns = dataset.column_names
+    if original_columns is None:
+        raise ValueError(f"{name} dataset does not expose its column names")
+    return dataset.map(
+        to_sft_example,
+        remove_columns=original_columns,
+    )
