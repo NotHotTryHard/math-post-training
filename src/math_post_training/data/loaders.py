@@ -62,10 +62,7 @@ def split_train_validation(dataset, config):
         )
         train_dataset = shuffled.skip(size)
         validation_dataset = shuffled.take(size)
-        if config.get("replay_streaming", False):
-            train_dataset = _make_replayable(train_dataset)
-            validation_dataset = _make_replayable(validation_dataset)
-        return train_dataset, validation_dataset
+        return _make_replayable(train_dataset), _make_replayable(validation_dataset)
 
     if size >= len(dataset):
         raise ValueError(

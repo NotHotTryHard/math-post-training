@@ -23,7 +23,6 @@ vllm:
 dataset:
   validation:
     shuffle_buffer_size: 2_000
-    replay_streaming: true
     size: 2048
     seed: 42
   sources:

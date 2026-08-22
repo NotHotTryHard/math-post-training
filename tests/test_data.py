@@ -219,15 +219,18 @@ def test_streaming_holdout_can_replay_the_same_sequence_across_epochs():
             "size": 2,
             "seed": 42,
             "shuffle_buffer_size": 4,
-            "replay_streaming": True,
         },
     )
 
-    epochs = []
+    train_epochs = []
+    validation_epochs = []
     for epoch in range(3):
         train.set_epoch(epoch)
-        epochs.append([row["problem"] for row in train])
+        validation.set_epoch(epoch)
+        train_epochs.append([row["problem"] for row in train])
+        validation_epochs.append([row["problem"] for row in validation])
 
-    assert len(epochs[0]) == 8
-    assert epochs[0] == epochs[1] == epochs[2]
-    assert set(epochs[0]).isdisjoint(row["problem"] for row in validation)
+    assert len(train_epochs[0]) == 8
+    assert train_epochs[0] == train_epochs[1] == train_epochs[2]
+    assert validation_epochs[0] == validation_epochs[1] == validation_epochs[2]
+    assert set(train_epochs[0]).isdisjoint(validation_epochs[0])
