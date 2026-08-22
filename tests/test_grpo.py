@@ -4,8 +4,14 @@ from types import SimpleNamespace
 import pytest
 
 from math_post_training import grpo
+from math_post_training.config import load_yaml_config
 from math_post_training.prompts.training import MATH_SYSTEM_PROMPT
 from math_post_training.rewards import accuracy_reward, boxed_format_reward
+
+GRPO_CONFIGS = [
+    Path("configs/config.example.yaml"),
+    Path("configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml"),
+]
 
 
 class FakeDataset:
@@ -158,3 +164,14 @@ def test_prepare_dataset_requires_visible_columns():
         match="Training dataset does not expose its column names",
     ):
         grpo._prepare_dataset(dataset, name="Training")
+
+
+@pytest.mark.parametrize("path", GRPO_CONFIGS)
+def test_grpo_configs_are_accepted_by_trl(path):
+    training_config = dict(load_yaml_config(path)["grpo"])
+    training_config.update(bf16=False, tf32=False)
+
+    args = grpo.GRPOConfig(**training_config)
+
+    assert args.generation_batch_size % args.num_generations == 0
+    assert args.reward_weights == [1.0, 0.1]

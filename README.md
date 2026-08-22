@@ -70,6 +70,49 @@ model-eval \
   --model outputs/sft/qwen2.5-1.5b-instruct-gsm8k
 ```
 
+## Reinforcement learning
+
+GRPO запускается отдельной стадией и не использует размеченные цепочки решения. Trainer получает
+условие задачи, генерирует несколько ответов через vLLM и оптимизирует два проверяемых сигнала:
+математическую корректность с весом `1.0` и наличие финального `\\boxed{}` с весом `0.1`.
+`loss_type: dapo` включает DAPO-нормализацию policy loss; остальные элементы полного DAPO recipe,
+например dynamic sampling, этим параметром автоматически не добавляются.
+
+Короткий GPU smoke-run на Instruct checkpoint:
+
+```bash
+uv sync --group train --group vllm
+model-grpo \
+  --config configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml
+```
+
+Для ветки SFT → GRPO достаточно заменить `model.name_or_path` в GRPO-конфиге на merged checkpoint,
+который сохранил `model-sft`. Новый RL LoRA-адаптер будет обучен поверх этих объединённых весов.
+Результат сохраняется так же, как после SFT: адаптер находится в `<grpo.output_dir>/adapter`, а
+готовый к vLLM merged checkpoint — непосредственно в `grpo.output_dir`.
+
+Продолжение из полного Trainer checkpoint:
+
+```bash
+model-grpo \
+  --config configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml \
+  --resume-from-checkpoint /workspace/outputs/grpo/<experiment>/checkpoint-5
+```
+
+В `vllm_mode: colocate` генератор делит GPU с обучаемой моделью; долю памяти задаёт
+`vllm_gpu_memory_utilization`. Для отдельного generation GPU можно переключить режим на `server`
+и запустить совместимый `trl vllm-serve`. Встроенный GRPO backend намеренно не использует
+`generation/vllm.py`: TRL сам синхронизирует обновлённые policy weights и корректирует расхождение
+log probabilities между Transformers и vLLM.
+
+После RL внешний benchmark остаётся отдельным явным шагом:
+
+```bash
+model-eval \
+  --config configs/current.yaml \
+  --model /workspace/outputs/grpo/qwen2.5-1.5b-instruct-gsm8k-grpo-smoke
+```
+
 ## Локальная генерация
 
 CLI использует `model` и `inference` из `configs/current.yaml`:
@@ -189,17 +232,21 @@ WANDB_MODE=offline model-eval --limit 1
 ```text
 configs/
 ├── eval/                # Замороженные full-split baseline-прогоны.
+├── grpo/                # Самодостаточные GRPO experiment-конфиги.
 ├── config.example.yaml  # Полный пример конфигурации эксперимента.
 └── current.yaml         # Текущий локальный эксперимент.
 
 src/math_post_training/
 ├── cli.py               # Тонкая сборка model + prompt + generation для CLI.
 ├── config.py            # Загрузка YAML-конфигурации.
+├── grpo.py              # Online RL через TRL GRPOTrainer и rule-based rewards.
 ├── model.py             # Общая загрузка model/tokenizer из HF или checkpoint-а.
+├── rewards.py           # Проверяемые correctness и format rewards.
 ├── sft.py               # Независимый запуск supervised fine-tuning через TRL.
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
+│   ├── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
 │   ├── inference.py     # Prompt для ручного model-generate.
-│   └── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
+│   └── training.py      # System prompt для verifiable math RL.
 ├── eval.py              # Evaluation loop, метрики, tqdm и W&B-логирование.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
@@ -216,4 +263,5 @@ src/math_post_training/
     └── choice.py        # Exact-match для multiple-choice ответов.
 ```
 
-GRPO и reward functions будут добавлены отдельной стадией; `model-sft` их не запускает.
+`model-sft` и `model-grpo` остаются независимыми стадиями и никогда не запускают друг друга
+неявно.
