@@ -6,9 +6,11 @@ technical report and the official evaluation harness.
 
 import re
 
+from math_post_training.prompts.training import MATH_SYSTEM_PROMPT
+
 # ruff: noqa: E501 -- line wrapping would change the frozen prompt text
 
-QWEN_INSTRUCT_SYSTEM = "Please reason step by step, and put your final answer within \\boxed{}."
+QWEN_INSTRUCT_SYSTEM = MATH_SYSTEM_PROMPT
 
 
 def build_eval_prompt(

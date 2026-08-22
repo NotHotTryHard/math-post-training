@@ -10,6 +10,7 @@ from math_post_training.data.sources import (
     mmlu,
     open_math_instruct_2,
 )
+from math_post_training.prompts.training import MATH_SYSTEM_PROMPT
 
 
 def test_gsm8k_normalization_keeps_solution_and_extracts_answer():
@@ -124,7 +125,16 @@ def test_sft_and_grpo_use_different_parts_of_the_same_example():
         ],
     }
     assert to_grpo_example(example) == {
-        "problem": "What is 2 + 2?",
+        "prompt": [
+            {
+                "role": "system",
+                "content": MATH_SYSTEM_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": "What is 2 + 2?",
+            },
+        ],
         "answer": "4",
         "source": "fixture",
     }
