@@ -1,3 +1,6 @@
+import sys
+from types import SimpleNamespace
+
 from math_post_training import cli
 
 
@@ -61,3 +64,35 @@ def test_generate_supports_vllm_backend(monkeypatch, capsys):
 
     assert cli.generate_main(["hello"]) == 0
     assert capsys.readouterr().out == "completion\n"
+
+
+def test_grpo_command_starts_training_and_prints_output(monkeypatch, capsys, tmp_path):
+    config_path = tmp_path / "experiment.yaml"
+    checkpoint = tmp_path / "checkpoint-10"
+    output_dir = tmp_path / "trained-model"
+    config = {"experiment": {"name": "test-grpo"}}
+    call = {}
+
+    monkeypatch.setattr(cli, "load_yaml_config", lambda path: config)
+
+    def train(config_arg, *, resume_from_checkpoint):
+        call["config"] = config_arg
+        call["resume"] = resume_from_checkpoint
+        return output_dir
+
+    monkeypatch.setitem(
+        sys.modules,
+        "math_post_training.grpo",
+        SimpleNamespace(train_grpo=train),
+    )
+
+    assert cli.grpo_main(
+        [
+            "--config",
+            str(config_path),
+            "--resume-from-checkpoint",
+            str(checkpoint),
+        ]
+    ) == 0
+    assert call == {"config": config, "resume": checkpoint}
+    assert capsys.readouterr().out == f"Model: {output_dir}\n"

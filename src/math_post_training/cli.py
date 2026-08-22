@@ -161,6 +161,27 @@ def sft_main(argv=None):
     return 0
 
 
+def _grpo_parser():
+    parser = argparse.ArgumentParser(description="Train a model with verifiable GRPO rewards")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument("--resume-from-checkpoint", type=Path)
+    return parser
+
+
+def grpo_main(argv=None):
+    args = _grpo_parser().parse_args(argv)
+    config = load_yaml_config(args.config)
+
+    from math_post_training.grpo import train_grpo
+
+    output_dir = train_grpo(
+        config,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+    )
+    print(f"Model: {output_dir}")
+    return 0
+
+
 def _load_backend(backend_name, model_config, *, device, vllm_config):
     if backend_name == "transformers":
         resolved_device = _device(device)
