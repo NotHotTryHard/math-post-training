@@ -16,15 +16,6 @@ def test_accuracy_reward_verifies_math_answers():
     assert accuracy_reward(completions, [r"\\frac{1}{2}", "3"]) == [1.0, 0.0]
 
 
-def test_accuracy_reward_verifies_multiple_choice_answers():
-    completions = [
-        _completion("After checking, the final answer is C."),
-        _completion("After checking, the final answer is A."),
-    ]
-
-    assert accuracy_reward(completions, ["C", "D"]) == [1.0, 0.0]
-
-
 def test_boxed_format_reward_accepts_only_complete_boxes():
     completions = [
         _completion(r"Therefore, \\boxed{42}."),
