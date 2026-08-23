@@ -12,7 +12,7 @@ from math_post_training.data.loaders import (
     split_train_validation,
 )
 from math_post_training.data.preprocessing import to_sft_example
-from math_post_training.model import load_tokenizer, require_qwen_base_eos
+from math_post_training.model import load_tokenizer, prepare_math_policy_tokenizer
 
 
 def train_sft(config, *, resume_from_checkpoint=None):
@@ -34,7 +34,7 @@ def train_sft(config, *, resume_from_checkpoint=None):
         model_name,
         trust_remote_code=model_config.get("trust_remote_code", False),
     )
-    require_qwen_base_eos(tokenizer)
+    prepare_math_policy_tokenizer(tokenizer)
 
     train_dataset = load_math_dataset(config["dataset"])
     eval_dataset = None

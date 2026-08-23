@@ -27,6 +27,15 @@ def require_qwen_base_eos(tokenizer):
         )
 
 
+def prepare_math_policy_tokenizer(tokenizer):
+    """Validate native EOS and prevent saved policy checkpoints from exposing ChatML."""
+
+    require_qwen_base_eos(tokenizer)
+    tokenizer.chat_template = None
+    getattr(tokenizer, "init_kwargs", {}).pop("chat_template", None)
+    return tokenizer
+
+
 def load_model_and_tokenizer(
     name_or_path,
     *,

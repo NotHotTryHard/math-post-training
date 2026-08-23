@@ -3,7 +3,11 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from math_post_training.model import QWEN_BASE_EOS_TOKEN, require_qwen_base_eos
+from math_post_training.model import (
+    QWEN_BASE_EOS_TOKEN,
+    prepare_math_policy_tokenizer,
+    require_qwen_base_eos,
+)
 from math_post_training.sft import _weighted_eos_loss
 
 
@@ -34,3 +38,16 @@ def test_policy_training_requires_qwen_base_native_eos():
     tokenizer.eos_token = "<|im_end|>"
     with pytest.raises(ValueError, match="Qwen Base tokenizer"):
         require_qwen_base_eos(tokenizer)
+
+
+def test_policy_tokenizer_does_not_save_a_chat_template():
+    tokenizer = SimpleNamespace(
+        eos_token=QWEN_BASE_EOS_TOKEN,
+        eos_token_id=151643,
+        chat_template="<|im_start|>{{ messages }}<|im_end|>",
+        init_kwargs={"chat_template": "<|im_start|>{{ messages }}<|im_end|>"},
+    )
+
+    assert prepare_math_policy_tokenizer(tokenizer) is tokenizer
+    assert tokenizer.chat_template is None
+    assert "chat_template" not in tokenizer.init_kwargs
