@@ -1,0 +1,160 @@
+experiment:
+  name: qwen2.5-1.5b-instruct-openmath-296k-1epoch-lora
+
+model:
+  name_or_path: Qwen/Qwen2.5-1.5B-Instruct
+  dtype: auto
+  trust_remote_code: false
+
+lora:
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules: all-linear
+  bias: none
+  task_type: CAUSAL_LM
+
+vllm:
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.9
+  max_model_len: 32768
+  enable_prefix_caching: true
+
+dataset:
+  validation:
+    shuffle_buffer_size: 2_000
+    size: 2048
+    seed: 42
+  sources:
+    - adapter: open_math_instruct_2
+      path: nvidia/OpenMathInstruct-2
+      subset: null
+      revision: 469216e3f46f4dacf476b382e192485ea51a143e
+      split: train_1M
+      streaming: true
+      shuffle_seed: 42
+      shuffle_buffer_size: 2_000
+      limit: 296000
+
+sft:
+  output_dir: /workspace/outputs/sft/qwen2.5-1.5b-instruct-openmath-296k-1epoch-lora
+  max_length: 4096
+  max_steps: 4593
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 16
+  learning_rate: 5.0e-5
+  lr_scheduler_type: cosine
+  warmup_steps: 138
+  optim: adamw_torch_fused
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_epsilon: 1.0e-8
+  weight_decay: 1.0e-2
+  max_grad_norm: 1.0
+  completion_only_loss: true
+  packing: false
+  dataloader_num_workers: 0
+  bf16: true
+  tf32: true
+  gradient_checkpointing: false
+  logging_steps: 10
+  include_num_input_tokens_seen: all
+  eval_strategy: steps
+  eval_steps: 500
+  per_device_eval_batch_size: 8
+  prediction_loss_only: true
+  save_strategy: steps
+  save_steps: 500
+  save_total_limit: 10
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+  push_to_hub: true
+  hub_model_id: NotHotTryHard/qwen2.5-1.5b-instruct-openmath-296k-1epoch-lora
+  hub_strategy: checkpoint
+  hub_private_repo: true
+  report_to: wandb
+  seed: 42
+  data_seed: 42
+
+inference:
+  backend: vllm
+  max_new_tokens: 256
+  num_return_sequences: 4
+  do_sample: true
+  temperature: 0.8
+  top_p: 0.95
+  seed: 42
+
+eval:
+  backend: vllm
+  protocol: qwen2_5_math_instruct
+  output_dir: /workspace/outputs/eval/qwen2.5-1.5b-instruct-openmath-296k-1epoch-lora-chat
+  sample_seed: 42
+  shuffle_buffer_size: 10_000
+  batch_size: 768
+  save_predictions: true
+  wandb:
+    enabled: true
+    log_predictions: true
+  generation:
+    max_new_tokens: 2048
+    num_return_sequences: 1
+    do_sample: false
+    temperature: 0.0
+    top_p: 1.0
+    seed: 42
+  benchmarks:
+    - name: gsm8k
+      adapter: gsm8k
+      path: openai/gsm8k
+      subset: main
+      revision: 740312add88f781978c0658806c59bc2815b9866
+      split: test
+
+    - name: gsm1k
+      adapter: gsm1k
+      path: ScaleAI/gsm1k
+      subset: null
+      revision: bc09569d09a614b9b530edc7f076fb214ac10493
+      split: test
+
+    - name: math
+      adapter: hendrycks_math
+      path: EleutherAI/hendrycks_math
+      subsets:
+        - algebra
+        - counting_and_probability
+        - geometry
+        - intermediate_algebra
+        - number_theory
+        - prealgebra
+        - precalculus
+      revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
+      split: test
+
+    - name: mmlu_stem
+      adapter: mmlu
+      path: cais/mmlu
+      revision: c30699e8356da336a370243923dbaf21066bb9fe
+      split: test
+      subsets:
+        - abstract_algebra
+        - anatomy
+        - astronomy
+        - college_biology
+        - college_chemistry
+        - college_computer_science
+        - college_mathematics
+        - college_physics
+        - computer_security
+        - conceptual_physics
+        - electrical_engineering
+        - elementary_mathematics
+        - high_school_biology
+        - high_school_chemistry
+        - high_school_computer_science
+        - high_school_mathematics
+        - high_school_physics
+        - high_school_statistics
+        - machine_learning
