@@ -22,6 +22,11 @@ def train_sft(config, *, resume_from_checkpoint=None):
     model_name = model_config["name_or_path"]
     training_config = dict(config["sft"])
     eos_loss_weight = training_config.pop("eos_loss_weight", 1.0)
+    if eos_loss_weight != 1.0:
+        loss_type = training_config.get("loss_type", "nll")
+        if loss_type != "nll":
+            raise ValueError("sft.eos_loss_weight requires sft.loss_type: nll")
+        training_config["loss_type"] = "nll"
     output_dir = Path(training_config["output_dir"])
     lora_config = LoraConfig(**config["lora"])
 

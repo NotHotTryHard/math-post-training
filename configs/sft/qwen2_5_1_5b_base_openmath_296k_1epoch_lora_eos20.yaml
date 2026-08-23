@@ -52,6 +52,7 @@ sft:
   weight_decay: 1.0e-2
   max_grad_norm: 1.0
   completion_only_loss: true
+  loss_type: nll
   eos_loss_weight: 20.0
   packing: false
   dataloader_num_workers: 0
