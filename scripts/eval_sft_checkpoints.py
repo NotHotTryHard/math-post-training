@@ -45,6 +45,7 @@ def merge_checkpoint(checkpoint, output_dir):
     base_model = AutoModelForCausalLM.from_pretrained(
         peft_config.base_model_name_or_path,
         dtype=torch.bfloat16,
+        device_map={"": "cuda"},
         low_cpu_mem_usage=True,
     )
     peft_model = PeftModel.from_pretrained(base_model, checkpoint)
@@ -55,6 +56,7 @@ def merge_checkpoint(checkpoint, output_dir):
     tokenizer.save_pretrained(output_dir)
     del tokenizer, merged_model, peft_model, base_model
     gc.collect()
+    torch.cuda.empty_cache()
 
 
 def write_index(output_root, checkpoints):
