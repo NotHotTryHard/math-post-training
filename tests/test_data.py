@@ -113,6 +113,10 @@ def test_sft_and_grpo_use_different_parts_of_the_same_example():
     assert to_sft_example(example) == {
         "prompt": [
             {
+                "role": "system",
+                "content": MATH_SYSTEM_PROMPT,
+            },
+            {
                 "role": "user",
                 "content": "What is 2 + 2?",
             }

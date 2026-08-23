@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import torch
+import torch.nn.functional as F
 from peft import LoraConfig
 from trl import SFTConfig, SFTTrainer
 
@@ -19,6 +21,7 @@ def train_sft(config, *, resume_from_checkpoint=None):
     model_config = config["model"]
     model_name = model_config["name_or_path"]
     training_config = dict(config["sft"])
+    eos_loss_weight = training_config.pop("eos_loss_weight", 1.0)
     output_dir = Path(training_config["output_dir"])
     lora_config = LoraConfig(**config["lora"])
 
@@ -56,6 +59,7 @@ def train_sft(config, *, resume_from_checkpoint=None):
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
         peft_config=lora_config,
+        compute_loss_func=_weighted_eos_loss(tokenizer.eos_token_id, eos_loss_weight),
     )
     trainer.train(
         resume_from_checkpoint=(
@@ -73,6 +77,37 @@ def train_sft(config, *, resume_from_checkpoint=None):
     tokenizer.save_pretrained(output_dir)
 
     return output_dir
+
+
+def _weighted_eos_loss(eos_token_id, eos_loss_weight):
+    """Return token NLL with additional weight on the assistant EOS label."""
+
+    if eos_loss_weight < 1.0:
+        raise ValueError("sft.eos_loss_weight must be at least 1.0")
+    if eos_loss_weight == 1.0:
+        return None
+
+    def compute_loss(outputs, labels, num_items_in_batch=None):
+        shift_logits = outputs.logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+        token_loss = F.cross_entropy(
+            shift_logits.view(-1, shift_logits.size(-1)),
+            shift_labels.view(-1),
+            ignore_index=-100,
+            reduction="none",
+        )
+        flat_labels = shift_labels.view(-1)
+        weights = torch.ones_like(token_loss)
+        weights[flat_labels == eos_token_id] = eos_loss_weight
+        weighted_loss = (token_loss * weights).sum()
+        denominator = (
+            num_items_in_batch
+            if num_items_in_batch is not None
+            else (flat_labels != -100).sum()
+        )
+        return weighted_loss / denominator.clamp_min(1)
+
+    return compute_loss
 
 
 def _remove_root_adapter_files(output_dir):
