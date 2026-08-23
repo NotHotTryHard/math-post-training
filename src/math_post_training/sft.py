@@ -65,6 +65,7 @@ def train_sft(config, *, resume_from_checkpoint=None):
     adapter_dir = output_dir / "adapter"
     trainer.save_model(adapter_dir)
     tokenizer.save_pretrained(adapter_dir)
+    _remove_root_adapter_files(output_dir)
 
     model = trainer.accelerator.unwrap_model(trainer.model)
     merged_model = model.merge_and_unload()
@@ -72,6 +73,13 @@ def train_sft(config, *, resume_from_checkpoint=None):
     tokenizer.save_pretrained(output_dir)
 
     return output_dir
+
+
+def _remove_root_adapter_files(output_dir):
+    """Keep Hub-managed PEFT weights from being mixed with merged model weights."""
+
+    for filename in ("adapter_config.json", "adapter_model.bin", "adapter_model.safetensors"):
+        (output_dir / filename).unlink(missing_ok=True)
 
 
 def _prepare_dataset(dataset, *, name):
