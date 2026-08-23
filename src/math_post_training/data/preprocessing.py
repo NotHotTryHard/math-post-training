@@ -12,10 +12,6 @@ def to_sft_example(example):
     return {
         "prompt": [
             {
-                "role": "system",
-                "content": MATH_SYSTEM_PROMPT,
-            },
-            {
                 "role": "user",
                 "content": example["problem"],
             }
