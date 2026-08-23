@@ -2,14 +2,13 @@ import sys
 from types import SimpleNamespace
 
 from math_post_training import cli
+from math_post_training.model import QWEN_BASE_EOS_TOKEN
+from math_post_training.prompts.training import build_math_prompt
 
 
 class RecordingTokenizer:
-    def apply_chat_template(self, messages, tokenize, add_generation_prompt):
-        assert tokenize is False
-        assert add_generation_prompt is True
-        assert messages == [{"role": "user", "content": "hello"}]
-        return "rendered prompt"
+    eos_token = QWEN_BASE_EOS_TOKEN
+    eos_token_id = 151643
 
 
 class FakeBackend:
@@ -17,7 +16,7 @@ class FakeBackend:
         pass
 
     def generate(self, prompts, config):
-        assert prompts == ["rendered prompt"]
+        assert prompts == [build_math_prompt("hello")]
         return [["completion"]]
 
 
@@ -30,7 +29,7 @@ class FakeVLLMBackend:
         self.tokenizer = RecordingTokenizer()
 
     def generate(self, prompts, config):
-        assert prompts == ["rendered prompt"]
+        assert prompts == [build_math_prompt("hello")]
         return [["completion"]]
 
 
@@ -49,7 +48,8 @@ def test_generate_can_show_exact_rendered_prompt(monkeypatch, capsys):
 
     assert cli.generate_main(["hello", "--show-prompt"]) == 0
     assert capsys.readouterr().out == (
-        "=== prompt sent to model ===\nrendered prompt\n=== completion ===\ncompletion\n"
+        f"=== prompt sent to model ===\n{build_math_prompt('hello')}"
+        "\n=== completion ===\ncompletion\n"
     )
 
 

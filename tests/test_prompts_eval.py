@@ -8,6 +8,7 @@ from math_post_training.prompts.eval import (
     build_eval_prompt,
     get_eval_settings,
 )
+from math_post_training.prompts.training import build_math_prompt
 
 
 class RecordingTokenizer:
@@ -79,6 +80,21 @@ def test_base_zero_shot_cot_prompt_adds_reasoning_cue():
     )
 
     assert prompt == "Question: What is 1 + 1?\nLet's think step by step"
+
+
+def test_post_training_protocol_uses_the_shared_plain_text_prompt():
+    prompt = build_eval_prompt(
+        RecordingTokenizer(),
+        "What is 1 + 1?",
+        benchmark="gsm8k",
+        protocol="math_post_training",
+    )
+
+    assert prompt == build_math_prompt("What is 1 + 1?")
+    settings = get_eval_settings("math_post_training", "gsm8k")
+    assert settings["num_shots"] == 0
+    assert settings["required_answer_format"] == "boxed"
+    assert settings["stop_strings"] is None
 
 
 def test_instruct_protocol_uses_chat_template_and_boxed_system_prompt():

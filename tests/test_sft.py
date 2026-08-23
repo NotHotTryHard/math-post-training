@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
+from math_post_training.model import QWEN_BASE_EOS_TOKEN, require_qwen_base_eos
 from math_post_training.sft import _weighted_eos_loss
 
 
@@ -24,3 +25,12 @@ def test_weighted_eos_loss_increases_only_eos_contribution():
 def test_weighted_eos_loss_rejects_downweighting():
     with pytest.raises(ValueError, match="at least 1.0"):
         _weighted_eos_loss(eos_token_id=1, eos_loss_weight=0.5)
+
+
+def test_policy_training_requires_qwen_base_native_eos():
+    tokenizer = SimpleNamespace(eos_token=QWEN_BASE_EOS_TOKEN, eos_token_id=151643)
+    require_qwen_base_eos(tokenizer)
+
+    tokenizer.eos_token = "<|im_end|>"
+    with pytest.raises(ValueError, match="Qwen Base tokenizer"):
+        require_qwen_base_eos(tokenizer)

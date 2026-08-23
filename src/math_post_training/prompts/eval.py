@@ -6,11 +6,11 @@ technical report and the official evaluation harness.
 
 import re
 
-from math_post_training.prompts.training import MATH_SYSTEM_PROMPT
+from math_post_training.prompts.training import build_math_prompt
 
 # ruff: noqa: E501 -- line wrapping would change the frozen prompt text
 
-QWEN_INSTRUCT_SYSTEM = MATH_SYSTEM_PROMPT
+QWEN_INSTRUCT_SYSTEM = "Please reason step by step, and put your final answer within \\boxed{}."
 
 
 def build_eval_prompt(
@@ -43,6 +43,9 @@ def build_eval_prompt(
 
     if protocol == "qwen2_5_math_base_zero_shot_cot":
         return _base_zero_shot_cot_prompt(problem, benchmark)
+
+    if protocol == "math_post_training":
+        return build_math_prompt(problem)
 
     if protocol == "qwen2_5_math_base":
         if benchmark in {"gsm8k", "gsm1k"}:
@@ -91,6 +94,7 @@ def get_eval_settings(protocol, benchmark):
         }
 
     if protocol in {
+        "math_post_training",
         "qwen2_5_math_base_zero_shot",
         "qwen2_5_math_base_zero_shot_cot",
     }:
@@ -101,8 +105,10 @@ def get_eval_settings(protocol, benchmark):
         return {
             "num_shots": 0,
             "answer_kind": answer_kind,
-            "required_answer_format": None,
-            "stop_strings": stop_strings,
+            "required_answer_format": (
+                "boxed" if protocol == "math_post_training" and answer_kind == "math" else None
+            ),
+            "stop_strings": None if protocol == "math_post_training" else stop_strings,
         }
 
     raise ValueError(f"Unknown evaluation protocol: {protocol!r}")

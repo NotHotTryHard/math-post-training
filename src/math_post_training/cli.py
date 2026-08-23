@@ -9,7 +9,7 @@ from math_post_training.config import load_yaml_config
 from math_post_training.generation.base import GenerationConfig
 from math_post_training.generation.transformers import TransformersBackend
 from math_post_training.generation.vllm import VLLMBackend
-from math_post_training.model import load_model_and_tokenizer
+from math_post_training.model import load_model_and_tokenizer, require_qwen_base_eos
 from math_post_training.prompts.inference import build_inference_prompt
 
 DEFAULT_CONFIG_PATH = Path("configs/current.yaml")
@@ -35,8 +35,7 @@ def _generate_parser():
         default="auto",
         help="Transformers device; vLLM selects its accelerator from the environment",
     )
-    parser.add_argument("--system")
-    parser.add_argument("--raw", action="store_true", help="do not apply a chat template")
+    parser.add_argument("--raw", action="store_true", help="send the prompt unchanged")
     parser.add_argument(
         "--show-prompt",
         action="store_true",
@@ -61,11 +60,11 @@ def generate_main(argv=None):
         device=args.device,
         vllm_config=config.get("vllm", {}),
     )
+    if not args.raw:
+        require_qwen_base_eos(tokenizer)
 
     prompt = build_inference_prompt(
-        tokenizer,
         args.prompt,
-        system_prompt=args.system,
         raw=args.raw,
     )
 

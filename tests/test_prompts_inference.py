@@ -1,29 +1,12 @@
 from math_post_training.prompts.inference import build_inference_prompt
+from math_post_training.prompts.training import build_math_prompt
 
 
-class FakeTokenizer:
-    def apply_chat_template(self, messages, tokenize, add_generation_prompt):
-        assert tokenize is False
-        assert add_generation_prompt is True
-        self.messages = messages
-        return "rendered prompt"
-
-
-def test_inference_prompt_builds_messages_and_applies_chat_template():
-    tokenizer = FakeTokenizer()
-
-    prompt = build_inference_prompt(
-        tokenizer,
-        "Hello",
-        system_prompt="Be concise",
+def test_inference_prompt_uses_the_shared_math_template():
+    assert build_inference_prompt("What is 2 + 2?") == build_math_prompt(
+        "What is 2 + 2?"
     )
-
-    assert prompt == "rendered prompt"
-    assert tokenizer.messages == [
-        {"role": "system", "content": "Be concise"},
-        {"role": "user", "content": "Hello"},
-    ]
 
 
 def test_raw_inference_prompt_is_returned_unchanged():
-    assert build_inference_prompt(None, "raw text", raw=True) == "raw text"
+    assert build_inference_prompt("raw text", raw=True) == "raw text"

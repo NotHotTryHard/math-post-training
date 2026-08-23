@@ -5,7 +5,8 @@ import pytest
 
 from math_post_training import grpo
 from math_post_training.config import load_yaml_config
-from math_post_training.prompts.training import MATH_SYSTEM_PROMPT
+from math_post_training.model import QWEN_BASE_EOS_TOKEN
+from math_post_training.prompts.training import build_math_prompt
 from math_post_training.rewards import accuracy_reward, boxed_format_reward
 
 GRPO_CONFIGS = [
@@ -19,14 +20,16 @@ class FakeDataset:
         self.rows = rows
         self.column_names = list(rows[0])
 
-    def map(self, function, remove_columns):
+    def map(self, function, remove_columns, fn_kwargs=None):
         assert remove_columns == self.column_names
-        return FakeDataset([function(row) for row in self.rows])
+        return FakeDataset([function(row, **(fn_kwargs or {})) for row in self.rows])
 
 
 class FakeTokenizer:
     def __init__(self):
         self.saved_paths = []
+        self.eos_token = QWEN_BASE_EOS_TOKEN
+        self.eos_token_id = 151643
 
     def save_pretrained(self, path):
         self.saved_paths.append(Path(path))
@@ -137,10 +140,7 @@ def test_train_grpo_prepares_data_and_saves_adapter_and_merged_model(monkeypatch
     assert trainer.kwargs["model"] == "sft-checkpoint"
     assert trainer.kwargs["reward_funcs"] == [accuracy_reward, boxed_format_reward]
     assert trainer.kwargs["train_dataset"].rows[0] == {
-        "prompt": [
-            {"role": "system", "content": MATH_SYSTEM_PROMPT},
-            {"role": "user", "content": "What is 2 + 2?"},
-        ],
+        "prompt": build_math_prompt("What is 2 + 2?"),
         "answer": "4",
         "source": "fixture",
     }

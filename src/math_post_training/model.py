@@ -2,21 +2,29 @@
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-QWEN_CHAT_EOS_TOKEN = "<|im_end|>"
+QWEN_BASE_EOS_TOKEN = "<|endoftext|>"
 
 
-def load_tokenizer(name_or_path, *, trust_remote_code=False, eos_token=None):
+def load_tokenizer(name_or_path, *, trust_remote_code=False):
     """Load a tokenizer and make it safe to use for batched causal generation."""
 
     tokenizer = AutoTokenizer.from_pretrained(
         name_or_path,
         trust_remote_code=trust_remote_code,
     )
-    if eos_token is not None and eos_token in tokenizer.get_vocab():
-        tokenizer.eos_token = eos_token
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     return tokenizer
+
+
+def require_qwen_base_eos(tokenizer):
+    """Fail before training if a ChatML/Instruct tokenizer slipped into the policy."""
+
+    if tokenizer.eos_token != QWEN_BASE_EOS_TOKEN or tokenizer.eos_token_id is None:
+        raise ValueError(
+            "Math policy training requires a Qwen Base tokenizer with "
+            f"eos_token={QWEN_BASE_EOS_TOKEN!r}; got {tokenizer.eos_token!r}"
+        )
 
 
 def load_model_and_tokenizer(

@@ -12,7 +12,7 @@ from math_post_training.data.loaders import (
     split_train_validation,
 )
 from math_post_training.data.preprocessing import to_sft_example
-from math_post_training.model import QWEN_CHAT_EOS_TOKEN, load_tokenizer
+from math_post_training.model import load_tokenizer, require_qwen_base_eos
 
 
 def train_sft(config, *, resume_from_checkpoint=None):
@@ -33,8 +33,8 @@ def train_sft(config, *, resume_from_checkpoint=None):
     tokenizer = load_tokenizer(
         model_name,
         trust_remote_code=model_config.get("trust_remote_code", False),
-        eos_token=QWEN_CHAT_EOS_TOKEN,
     )
+    require_qwen_base_eos(tokenizer)
 
     train_dataset = load_math_dataset(config["dataset"])
     eval_dataset = None
@@ -45,9 +45,17 @@ def train_sft(config, *, resume_from_checkpoint=None):
             validation_config,
         )
 
-    train_dataset = _prepare_dataset(train_dataset, name="Training")
+    train_dataset = _prepare_dataset(
+        train_dataset,
+        name="Training",
+        eos_token=tokenizer.eos_token,
+    )
     if eval_dataset is not None:
-        eval_dataset = _prepare_dataset(eval_dataset, name="Validation")
+        eval_dataset = _prepare_dataset(
+            eval_dataset,
+            name="Validation",
+            eos_token=tokenizer.eos_token,
+        )
 
     training_config.setdefault("run_name", config["experiment"]["name"])
     training_config["output_dir"] = str(output_dir)
@@ -122,13 +130,14 @@ def _remove_root_adapter_files(output_dir):
         (output_dir / filename).unlink(missing_ok=True)
 
 
-def _prepare_dataset(dataset, *, name):
-    """Convert one normalized math split into TRL's conversational format."""
+def _prepare_dataset(dataset, *, name, eos_token):
+    """Convert one normalized math split into the native-EOS SFT format."""
 
     original_columns = dataset.column_names
     if original_columns is None:
         raise ValueError(f"{name} dataset does not expose its column names")
     return dataset.map(
         to_sft_example,
+        fn_kwargs={"eos_token": eos_token},
         remove_columns=original_columns,
     )

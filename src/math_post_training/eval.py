@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from math_post_training.data.loaders import load_math_source
 from math_post_training.generation.base import GenerationConfig
+from math_post_training.model import require_qwen_base_eos
 from math_post_training.prompts.eval import (
     build_eval_prompt,
     get_eval_settings,
@@ -52,6 +53,8 @@ def eval_model(
 
     eval_config = config["eval"]
     protocol = eval_config["protocol"]
+    if protocol == "math_post_training":
+        require_qwen_base_eos(tokenizer)
     generation = GenerationConfig(**eval_config["generation"])
     if generation.num_return_sequences != 1:
         raise ValueError("eval requires generation.num_return_sequences = 1")

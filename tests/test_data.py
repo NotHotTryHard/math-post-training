@@ -10,7 +10,8 @@ from math_post_training.data.sources import (
     mmlu,
     open_math_instruct_2,
 )
-from math_post_training.prompts.training import MATH_SYSTEM_PROMPT
+from math_post_training.model import QWEN_BASE_EOS_TOKEN
+from math_post_training.prompts.training import build_math_prompt
 
 
 def test_gsm8k_normalization_keeps_solution_and_extracts_answer():
@@ -102,7 +103,7 @@ def test_loader_does_not_reencode_normalized_mmlu_answer_as_class_label(monkeypa
     assert dataset[0]["answer"] == "C"
 
 
-def test_sft_and_grpo_use_different_parts_of_the_same_example():
+def test_sft_and_grpo_share_the_exact_plain_text_prompt():
     example = {
         "problem": "What is 2 + 2?",
         "solution": "Two plus two equals four.",
@@ -110,34 +111,41 @@ def test_sft_and_grpo_use_different_parts_of_the_same_example():
         "source": "fixture",
     }
 
-    assert to_sft_example(example) == {
-        "prompt": [
-            {
-                "role": "user",
-                "content": "What is 2 + 2?",
-            }
-        ],
-        "completion": [
-            {
-                "role": "assistant",
-                "content": "Two plus two equals four.",
-            }
-        ],
+    expected_prompt = build_math_prompt("What is 2 + 2?")
+    sft_example = to_sft_example(example)
+    assert sft_example == {
+        "prompt": expected_prompt,
+        "completion": f"Two plus two equals four.{QWEN_BASE_EOS_TOKEN}",
     }
     assert to_grpo_example(example) == {
-        "prompt": [
-            {
-                "role": "system",
-                "content": MATH_SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": "What is 2 + 2?",
-            },
-        ],
+        "prompt": expected_prompt,
         "answer": "4",
         "source": "fixture",
     }
+
+
+def test_sft_normalizes_repeated_native_eos_to_one_token():
+    example = {
+        "problem": "What is 2 + 2?",
+        "solution": f"Four.{QWEN_BASE_EOS_TOKEN}{QWEN_BASE_EOS_TOKEN}",
+        "answer": "4",
+        "source": "fixture",
+    }
+
+    assert to_sft_example(example)["completion"] == f"Four.{QWEN_BASE_EOS_TOKEN}"
+
+
+@pytest.mark.parametrize("token", ["<|im_start|>", "<|im_end|>"])
+def test_training_rejects_chatml_control_tokens(token):
+    example = {
+        "problem": "What is 2 + 2?",
+        "solution": f"Four.{token}",
+        "answer": "4",
+        "source": "fixture",
+    }
+
+    with pytest.raises(ValueError, match="forbidden ChatML token"):
+        to_sft_example(example)
 
 
 def test_grpo_rejects_an_example_without_reference_answer():

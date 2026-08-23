@@ -8,7 +8,7 @@ from trl import GRPOConfig, GRPOTrainer
 
 from math_post_training.data.loaders import load_math_dataset, split_train_validation
 from math_post_training.data.preprocessing import to_grpo_example
-from math_post_training.model import QWEN_CHAT_EOS_TOKEN, load_tokenizer
+from math_post_training.model import load_tokenizer, require_qwen_base_eos
 from math_post_training.rewards import accuracy_reward, boxed_format_reward
 
 REWARD_FUNCTIONS = [accuracy_reward, boxed_format_reward]
@@ -26,8 +26,8 @@ def train_grpo(config, *, resume_from_checkpoint=None):
     tokenizer = load_tokenizer(
         adapter_name or model_name,
         trust_remote_code=model_config.get("trust_remote_code", False),
-        eos_token=QWEN_CHAT_EOS_TOKEN,
     )
+    require_qwen_base_eos(tokenizer)
     train_dataset = load_math_dataset(config["dataset"])
     eval_dataset = None
     validation_config = config["dataset"].get("validation")
