@@ -10,7 +10,7 @@ from math_post_training.rewards import accuracy_reward, boxed_format_reward
 
 GRPO_CONFIGS = [
     Path("configs/config.example.yaml"),
-    Path("configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml"),
+    *sorted(Path("configs/grpo").glob("*.yaml")),
 ]
 
 
@@ -43,6 +43,14 @@ class FakeMergedModel:
 class FakeModel:
     def __init__(self):
         self.merged = FakeMergedModel()
+
+    def merge_and_unload(self):
+        return self.merged
+
+
+class FakeSftModel:
+    def __init__(self, merged):
+        self.merged = merged
 
     def merge_and_unload(self):
         return self.merged
@@ -164,6 +172,38 @@ def test_prepare_dataset_requires_visible_columns():
         match="Training dataset does not expose its column names",
     ):
         grpo._prepare_dataset(dataset, name="Training")
+
+
+def test_merge_adapter_loads_base_weights_then_merges_sft_lora(monkeypatch):
+    base_model = object()
+    merged_model = object()
+    calls = {}
+
+    def load_base(model_name, **kwargs):
+        calls["base"] = (model_name, kwargs)
+        return base_model
+
+    def load_adapter(model, adapter_name):
+        calls["adapter"] = (model, adapter_name)
+        return FakeSftModel(merged_model)
+
+    monkeypatch.setattr(grpo.AutoModelForCausalLM, "from_pretrained", load_base)
+    monkeypatch.setattr(grpo.PeftModel, "from_pretrained", load_adapter)
+
+    result = grpo._merge_adapter(
+        "Qwen/Qwen2.5-1.5B",
+        "owner/sft-adapter",
+        {"dtype": "bfloat16", "attn_implementation": "sdpa"},
+    )
+
+    assert result is merged_model
+    assert calls == {
+        "base": (
+            "Qwen/Qwen2.5-1.5B",
+            {"dtype": "bfloat16", "attn_implementation": "sdpa"},
+        ),
+        "adapter": (base_model, "owner/sft-adapter"),
+    }
 
 
 @pytest.mark.parametrize("path", GRPO_CONFIGS)

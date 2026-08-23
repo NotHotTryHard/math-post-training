@@ -1,0 +1,61 @@
+experiment:
+  name: qwen2.5-1.5b-base-openmath-296k-grpo-smoke
+
+model:
+  name_or_path: Qwen/Qwen2.5-1.5B
+  adapter_name_or_path: NotHotTryHard/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine
+  dtype: auto
+  trust_remote_code: false
+
+lora:
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules: all-linear
+  bias: none
+  task_type: CAUSAL_LM
+
+dataset:
+  sources:
+    - adapter: gsm8k
+      path: openai/gsm8k
+      subset: main
+      revision: e53f048856ff4f594e959d75785d2c2d37b678ee
+      split: train
+      streaming: true
+      shuffle_seed: 42
+      shuffle_buffer_size: 1_000
+      limit: 1_000
+
+grpo:
+  output_dir: /workspace/outputs/grpo/qwen2.5-1.5b-base-openmath-296k-grpo-smoke
+  max_steps: 10
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  learning_rate: 5.0e-6
+  max_completion_length: 1024
+  num_generations: 8
+  temperature: 0.8
+  top_p: 0.95
+  loss_type: dapo
+  scale_rewards: group
+  reward_weights: [1.0, 0.1]
+  mask_truncated_completions: true
+  beta: 0.0
+  disable_dropout: true
+  use_vllm: true
+  vllm_mode: colocate
+  vllm_tensor_parallel_size: 1
+  vllm_gpu_memory_utilization: 0.3
+  vllm_enable_sleep_mode: true
+  vllm_max_model_length: 1280
+  bf16: true
+  tf32: true
+  gradient_checkpointing: false
+  logging_steps: 1
+  log_completions: true
+  save_strategy: steps
+  save_steps: 5
+  save_total_limit: 2
+  report_to: wandb
+  seed: 42

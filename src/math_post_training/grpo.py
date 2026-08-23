@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from peft import LoraConfig
+from peft import LoraConfig, PeftModel
+from transformers import AutoModelForCausalLM
 from trl import GRPOConfig, GRPOTrainer
 
 from math_post_training.data.loaders import load_math_dataset, split_train_validation
@@ -18,11 +19,12 @@ def train_grpo(config, *, resume_from_checkpoint=None):
 
     model_config = config["model"]
     model_name = model_config["name_or_path"]
+    adapter_name = model_config.get("adapter_name_or_path")
     training_config = dict(config["grpo"])
     output_dir = Path(training_config["output_dir"])
 
     tokenizer = load_tokenizer(
-        model_name,
+        adapter_name or model_name,
         trust_remote_code=model_config.get("trust_remote_code", False),
         eos_token=QWEN_CHAT_EOS_TOKEN,
     )
@@ -41,14 +43,15 @@ def train_grpo(config, *, resume_from_checkpoint=None):
 
     training_config.setdefault("run_name", config["experiment"]["name"])
     training_config["output_dir"] = str(output_dir)
-    training_config["model_init_kwargs"] = {
-        "dtype": model_config.get("dtype", "auto"),
-        "trust_remote_code": model_config.get("trust_remote_code", False),
-        "attn_implementation": "sdpa",
-    }
+    model_init_kwargs = _model_init_kwargs(model_config)
+    if adapter_name is None:
+        policy = model_name
+        training_config["model_init_kwargs"] = model_init_kwargs
+    else:
+        policy = _merge_adapter(model_name, adapter_name, model_init_kwargs)
 
     trainer = GRPOTrainer(
-        model=model_name,
+        model=policy,
         reward_funcs=REWARD_FUNCTIONS,
         args=GRPOConfig(**training_config),
         train_dataset=train_dataset,
@@ -63,6 +66,25 @@ def train_grpo(config, *, resume_from_checkpoint=None):
     )
     _save_model(trainer, tokenizer, output_dir)
     return output_dir
+
+
+def _model_init_kwargs(model_config):
+    return {
+        "dtype": model_config.get("dtype", "auto"),
+        "trust_remote_code": model_config.get("trust_remote_code", False),
+        "attn_implementation": "sdpa",
+    }
+
+
+def _merge_adapter(model_name, adapter_name, model_init_kwargs):
+    """Merge an SFT adapter before attaching a fresh trainable RL adapter."""
+
+    base_model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        **model_init_kwargs,
+    )
+    sft_model = PeftModel.from_pretrained(base_model, adapter_name)
+    return sft_model.merge_and_unload()
 
 
 def _prepare_dataset(dataset, *, name):

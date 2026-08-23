@@ -86,8 +86,16 @@ model-grpo \
   --config configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml
 ```
 
-Для ветки SFT → GRPO достаточно заменить `model.name_or_path` в GRPO-конфиге на merged checkpoint,
-который сохранил `model-sft`. Новый RL LoRA-адаптер будет обучен поверх этих объединённых весов.
+Для ветки SFT → GRPO можно указать merged checkpoint в `model.name_or_path`. Если SFT checkpoint
+сохранён только как PEFT adapter, `model.name_or_path` задаёт исходную base model, а
+`model.adapter_name_or_path` — локальный путь или Hub ID адаптера. Перед созданием нового RL LoRA
+код явно объединит SFT adapter с base weights. Пример такого запуска:
+
+```bash
+model-grpo \
+  --config configs/grpo/qwen2_5_1_5b_base_openmath_296k_grpo_smoke.yaml
+```
+
 Результат сохраняется так же, как после SFT: адаптер находится в `<grpo.output_dir>/adapter`, а
 готовый к vLLM merged checkpoint — непосредственно в `grpo.output_dir`.
 
