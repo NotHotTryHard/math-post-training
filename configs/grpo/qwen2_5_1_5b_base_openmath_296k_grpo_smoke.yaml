@@ -1,9 +1,9 @@
 experiment:
-  name: qwen2.5-1.5b-base-openmath-296k-grpo-smoke
+  name: qwen2.5-1.5b-base-openmath-296k-native-eos-grpo-smoke
 
 model:
   name_or_path: Qwen/Qwen2.5-1.5B
-  adapter_name_or_path: NotHotTryHard/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine
+  adapter_name_or_path: NotHotTryHard/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine-native-eos
   dtype: auto
   trust_remote_code: false
 
@@ -28,7 +28,7 @@ dataset:
       limit: 1_000
 
 grpo:
-  output_dir: /workspace/outputs/grpo/qwen2.5-1.5b-base-openmath-296k-grpo-smoke
+  output_dir: /workspace/outputs/grpo/qwen2.5-1.5b-base-openmath-296k-native-eos-grpo-smoke
   max_steps: 10
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32

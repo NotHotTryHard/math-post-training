@@ -1,5 +1,5 @@
 experiment:
-  name: qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine
+  name: qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine-native-eos
 
 model:
   name_or_path: Qwen/Qwen2.5-1.5B
@@ -37,7 +37,7 @@ dataset:
       limit: 296000
 
 sft:
-  output_dir: /workspace/outputs/sft/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine
+  output_dir: /workspace/outputs/sft/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine-native-eos
   max_length: 4096
   max_steps: 4593
   per_device_train_batch_size: 4
@@ -70,7 +70,7 @@ sft:
   metric_for_best_model: eval_loss
   greater_is_better: false
   push_to_hub: true
-  hub_model_id: NotHotTryHard/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine
+  hub_model_id: NotHotTryHard/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine-native-eos
   hub_strategy: checkpoint
   hub_private_repo: true
   report_to: wandb
@@ -88,8 +88,8 @@ inference:
 
 eval:
   backend: vllm
-  protocol: qwen2_5_math_base
-  output_dir: /workspace/outputs/eval/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine
+  protocol: math_post_training
+  output_dir: /workspace/outputs/eval/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine-native-eos
   sample_seed: 42
   shuffle_buffer_size: 10_000
   batch_size: 768

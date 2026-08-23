@@ -1,8 +1,8 @@
 # math-post-training
 
 Учебный проект по SFT и RL post-training небольших языковых моделей на математических задачах.
-Планируются две ветки экспериментов: GRPO-дообучение `Qwen/Qwen2.5-1.5B-Instruct` и
-SFT с последующим GRPO для `Qwen/Qwen2.5-1.5B` на GSM8K.
+Основной pipeline: SFT с последующим GRPO для `Qwen/Qwen2.5-1.5B`.
+Instruct checkpoint используется только как отдельный внешний evaluation baseline.
 
 ## Конфигурация
 
@@ -48,6 +48,20 @@ model-sft --config configs/sft/qwen2_5_1_5b_base_openmath_1m_1epoch_rslora.yaml
 Исходная модель берётся из `model.name_or_path`. Адаптер сохраняется в
 `<sft.output_dir>/adapter`, а совместимый с vLLM объединённый checkpoint — непосредственно в
 `sft.output_dir`.
+SFT использует plain-text `prompt`/`completion`, без ChatML и без `apply_chat_template`:
+
+```text
+Solve the following math problem step by step. Put your final answer within \boxed{}.
+
+Problem: <problem>
+
+Solution:
+<solution><|endoftext|>
+```
+
+`<|endoftext|>` берётся из Base tokenizer-а и добавляется к completion ровно один раз.
+SFT и GRPO откажутся запускаться с tokenizer-ом, чей native EOS отличается, поэтому случайно
+подставить `-Instruct`/`<|im_end|>` в этот pipeline нельзя.
 `dataset.validation` задаёт детерминированный holdout, который исключается из training split.
 Во время обучения TRL пишет `eval_loss` в W&B на шагах `sft.eval_steps`, а после последней
 проверки восстанавливает лучший checkpoint перед сохранением адаптера и объединённой модели.
@@ -59,7 +73,7 @@ model-sft --config configs/sft/qwen2_5_1_5b_base_openmath_1m_1epoch_rslora.yaml
 ```bash
 model-sft \
   --config configs/current.yaml \
-  --resume-from-checkpoint outputs/sft/qwen2.5-1.5b-instruct-gsm8k/checkpoint-10
+  --resume-from-checkpoint outputs/sft/qwen2.5-1.5b-base-gsm8k-lora-native-eos/checkpoint-10
 ```
 
 Команда не запускает evaluation автоматически. Полученный checkpoint проверяется явно:
@@ -67,7 +81,7 @@ model-sft \
 ```bash
 model-eval \
   --config configs/current.yaml \
-  --model outputs/sft/qwen2.5-1.5b-instruct-gsm8k
+  --model outputs/sft/qwen2.5-1.5b-base-gsm8k-lora-native-eos
 ```
 
 ## Reinforcement learning
@@ -78,15 +92,7 @@ GRPO запускается отдельной стадией и не испол
 `loss_type: dapo` включает DAPO-нормализацию policy loss; остальные элементы полного DAPO recipe,
 например dynamic sampling, этим параметром автоматически не добавляются.
 
-Короткий GPU smoke-run на Instruct checkpoint:
-
-```bash
-uv sync --group train --group vllm
-model-grpo \
-  --config configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml
-```
-
-Для ветки SFT → GRPO можно указать merged checkpoint в `model.name_or_path`. Если SFT checkpoint
+Для SFT → GRPO можно указать merged checkpoint в `model.name_or_path`. Если SFT checkpoint
 сохранён только как PEFT adapter, `model.name_or_path` задаёт исходную base model, а
 `model.adapter_name_or_path` — локальный путь или Hub ID адаптера. Перед созданием нового RL LoRA
 код явно объединит SFT adapter с base weights. Пример такого запуска:
@@ -103,7 +109,7 @@ model-grpo \
 
 ```bash
 model-grpo \
-  --config configs/grpo/qwen2_5_1_5b_instruct_gsm8k_smoke.yaml \
+  --config configs/grpo/qwen2_5_1_5b_base_openmath_296k_grpo_smoke.yaml \
   --resume-from-checkpoint /workspace/outputs/grpo/<experiment>/checkpoint-5
 ```
 
@@ -118,7 +124,7 @@ log probabilities между Transformers и vLLM.
 ```bash
 model-eval \
   --config configs/current.yaml \
-  --model /workspace/outputs/grpo/qwen2.5-1.5b-instruct-gsm8k-grpo-smoke
+  --model /workspace/outputs/grpo/qwen2.5-1.5b-base-openmath-296k-native-eos-grpo-smoke
 ```
 
 ## Локальная генерация
@@ -129,7 +135,8 @@ CLI использует `model` и `inference` из `configs/current.yaml`:
 model-generate "If x + 3 = 7, what is x?"
 ```
 
-По умолчанию prompt оборачивается chat template-ом tokenizer-а. Для raw completion Base-модели:
+По умолчанию используется тот же plain-text math prompt, что в SFT, GRPO и post-training eval.
+Для произвольного raw completion без этого шаблона:
 
 ```bash
 model-generate --model Qwen/Qwen2.5-1.5B --raw "The answer to 2 + 2 is"
@@ -254,7 +261,7 @@ src/math_post_training/
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
 │   ├── inference.py     # Prompt для ручного model-generate.
-│   └── training.py      # System prompt для verifiable math RL.
+│   └── training.py      # Единый plain-text prompt для SFT, GRPO, eval и inference.
 ├── eval.py              # Evaluation loop, метрики, tqdm и W&B-логирование.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
