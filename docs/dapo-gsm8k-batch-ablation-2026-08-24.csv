@@ -1,0 +1,4 @@
+model,gsm8k,gsm1k,math,mmlu_stem,train_steps,train_runtime_seconds
+native-eos-sft,75.6634,69.8755,45.6400,41.9283,0,0
+dapo-bs32,74.5262,70.6224,46.5400,41.3892,967,13270
+dapo-bs64,75.8150,73.4440,46.8200,41.3574,484,11688
