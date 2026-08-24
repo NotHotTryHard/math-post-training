@@ -30,8 +30,8 @@ dataset:
 grpo:
   output_dir: /workspace/outputs/grpo/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo-strict
   max_steps: 2901
-  per_device_train_batch_size: 1
-  gradient_accumulation_steps: 64
+  per_device_train_batch_size: 8
+  gradient_accumulation_steps: 8
   learning_rate: 1.0e-5
   lr_scheduler_type: cosine
   warmup_steps: 290
@@ -50,7 +50,7 @@ grpo:
   vllm_mode: colocate
   vllm_tensor_parallel_size: 1
   vllm_gpu_memory_utilization: 0.3
-  vllm_enable_sleep_mode: true
+  vllm_enable_sleep_mode: false
   vllm_max_model_length: 1024
   bf16: true
   tf32: true

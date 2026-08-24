@@ -66,6 +66,23 @@ boxed-ответ — `1.1`. Fallback на последнее число позв
 - DAPO `epsilon=0.2`, `epsilon_high=0.28`, truncated completions masked;
 - `max_completion_length=512`, effective completion batch 64.
 
+### Throughput microbatch ablation
+
+All variants below keep the same generation batch 64, 16 rollouts, prompts, seed and optimizer
+batch. Only the training microbatch/accumulation split and vLLM sleep mode change.
+
+| Microbatch / accumulation | vLLM sleep | Mean step time | Speedup |
+| --- | ---: | ---: | ---: |
+| `1 / 64` | on | 23.13 s (last 50 of 108 steps) | 1.00× |
+| `4 / 16` | on | 9.49 s | 2.44× |
+| `8 / 8` | on | 8.38 s | 2.76× |
+| `16 / 4` | on | 8.24 s | 2.81× |
+| `8 / 8` | off | **6.53 s** | **3.54×** |
+
+`16/4` gives only a marginal improvement over `8/8` while reducing memory headroom. The full
+strict run therefore uses `8/8` with sleep disabled. Observed utilization rises from roughly 40%
+to mostly 80–100%, and the projected 2901-step runtime falls from about 19 hours to 5.2–5.8 hours.
+
 Конфиг: `configs/grpo/qwen2_5_1_5b_openmath_gsm8k_nontrivial_dapo_strict.yaml`.
 
 ## Артефакты
