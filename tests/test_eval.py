@@ -38,6 +38,9 @@ MMLU_STEM_SUBSETS = {
 
 
 class FakeTokenizer:
+    eos_token = "<|endoftext|>"
+    eos_token_id = 0
+
     def apply_chat_template(self, messages, tokenize, add_generation_prompt):
         return messages[-1]["content"]
 
