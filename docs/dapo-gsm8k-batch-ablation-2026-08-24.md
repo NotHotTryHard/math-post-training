@@ -60,8 +60,9 @@ boxed-ответ — `1.1`. Fallback на последнее число позв
 
 - единая строгая награда: correct box `+1`, wrong box `0`, missing box `-0.5`, без fallback;
 - 16 rollouts, 3 прохода, около 185.7k rollouts;
-- LR `5e-6`, cosine, 10% warmup;
-- LoRA `r32/a128/dropout=0.05`;
+- LR `1e-5`, cosine, 10% warmup;
+- LoRA `r32/a64/dropout=0.05`; this preserves the stronger setting from our SFT
+  ablation instead of copying `a128` from a different checkpoint and data recipe;
 - DAPO `epsilon=0.2`, `epsilon_high=0.28`, truncated completions masked;
 - `max_completion_length=512`, effective completion batch 64.
 
@@ -71,7 +72,7 @@ boxed-ответ — `1.1`. Fallback на последнее число позв
 
 - bs32 train W&B: `hr7gffuf`; eval: `g1c2jqq5`;
 - bs64 train W&B: `ninvm6gq`; eval: `it3fr265`;
-- strict run W&B: `lehf2rku`;
+- aborted strict `a128/5e-6` diagnostic W&B: `lehf2rku`;
 - merged bs32: `NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo-bs32-merged`;
 - merged bs64: `NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo-merged`;
 - сырые eval summaries и predictions сохранены в `/workspace/outputs/eval/...`.
