@@ -120,8 +120,22 @@ policy-relative success as separate signals.
 ## Durable artifacts
 
 - strict merged model: `NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo-strict-merged`;
+- strict training repo: `NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo-strict`;
+  all checkpoints `250,500,...,2750,2901` are preserved with adapter, optimizer,
+  scheduler, RNG and trainer state;
+- permissive bs32 training repo: `NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo-bs32`;
+  all checkpoints `100,200,...,900,967` are preserved;
+- permissive bs64 training repo: `NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-nontrivial-dapo`;
+  all checkpoints `100,200,300,400,484` are preserved;
 - strict training W&B: `db868g02`;
-- majority eval output: `/workspace/outputs/eval/dapo-strict-majority8`;
-- partial DeepMath output: `/workspace/outputs/rollouts/deepmath-sft-stage1-3x`;
+- private artifact dataset: `NotHotTryHard/strict-dapo-gsm8k-2026-08-24-artifacts`;
+  it contains strict greedy and majority@8 predictions/summaries, both permissive
+  evals, the GSM8K 8x rollout-filtering data, the 14,592-task DeepMath pilot,
+  all live-pod configs and all experiment logs;
 - source revision: `zwhe99/DeepMath-103K@5cf055d1fe3d7a2eb19719ac020211469736ae44`.
 
+The remote repositories were checked after upload: all are private, every
+expected checkpoint contains `adapter_model.safetensors`, `optimizer.pt`,
+`scheduler.pt`, `rng_state.pth` and `trainer_state.json`, and the artifact
+dataset contains 87 files (95,660,308 bytes). The disposable RunPod volume is
+not required to recover these experiments.
