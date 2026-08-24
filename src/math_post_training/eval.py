@@ -58,8 +58,16 @@ def eval_model(
     if protocol == "math_post_training":
         require_qwen_base_eos(tokenizer)
     generation = GenerationConfig(**eval_config["generation"])
-    if generation.num_return_sequences != 1:
-        raise ValueError("eval requires generation.num_return_sequences = 1")
+    aggregation = eval_config.get("aggregation", "single")
+    if generation.num_return_sequences != 1 and aggregation != "majority_vote":
+        raise ValueError(
+            "eval requires generation.num_return_sequences = 1 unless "
+            "eval.aggregation is majority_vote"
+        )
+    if aggregation == "majority_vote" and generation.num_return_sequences < 2:
+        raise ValueError("majority_vote requires generation.num_return_sequences >= 2")
+    if aggregation not in {"single", "majority_vote"}:
+        raise ValueError(f"Unknown eval aggregation: {aggregation}")
 
     run_dir = _make_run_dir(
         output_dir or eval_config["output_dir"],
@@ -84,6 +92,7 @@ def eval_model(
         "model": model_name,
         "created_at": datetime.now(UTC).isoformat(),
         "protocol": protocol,
+        "aggregation": aggregation,
         "generation": vars(generation),
         "benchmarks": {},
     }
@@ -106,6 +115,7 @@ def eval_model(
                     predictions_file=predictions_file,
                     predictions_table=prediction_tables.get(benchmark["name"]),
                     wandb_run=wandb_run,
+                    aggregation=aggregation,
                 )
                 summary["benchmarks"][benchmark["name"]] = result
         finally:
@@ -138,6 +148,7 @@ def _eval_benchmark(
     predictions_file,
     predictions_table,
     wandb_run,
+    aggregation,
 ):
     name = benchmark["name"]
     started_at = time.perf_counter()
@@ -166,23 +177,24 @@ def _eval_benchmark(
             completions = backend.generate(prompts, benchmark_generation)
 
             for example, generated in zip(batch, completions, strict=True):
-                completion = generated[0]
-                completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
-                truncated = completion_tokens >= generation.max_new_tokens - 1
-                prediction, extraction_method = extract_final_answer(
-                    completion,
-                    answer_kind=settings["answer_kind"],
-                )
-                if truncated and extraction_method in {"last_number", "last_choice"}:
-                    parsed, correct = False, False
-                elif settings["answer_kind"] == "choice":
-                    parsed, correct = check_choice_answer(example["answer"], prediction)
+                rollout_records = [
+                    _score_completion(
+                        tokenizer,
+                        completion,
+                        reference=example["answer"],
+                        settings=settings,
+                        max_new_tokens=generation.max_new_tokens,
+                    )
+                    for completion in generated
+                ]
+                if aggregation == "majority_vote":
+                    selected_record, vote = _select_majority_vote(
+                        rollout_records,
+                        answer_kind=settings["answer_kind"],
+                    )
                 else:
-                    parsed, correct = check_answer(example["answer"], prediction)
-                format_ok = follows_answer_format(
-                    completion,
-                    answer_format=settings["required_answer_format"],
-                )
+                    selected_record = rollout_records[0]
+                    vote = None
 
                 record = {
                     "benchmark": name,
@@ -192,16 +204,13 @@ def _eval_benchmark(
                     "topic": example.get("topic"),
                     "problem": example["problem"],
                     "reference_answer": example["answer"],
-                    "completion": completion,
-                    "extracted_answer": prediction,
-                    "extraction_method": extraction_method,
-                    "parsed": parsed,
-                    "correct": correct,
-                    "format_ok": format_ok,
-                    "completion_tokens": completion_tokens,
-                    "truncated": truncated,
+                    **selected_record,
                 }
+                if vote is not None:
+                    record.update(vote)
+                    record["rollouts"] = rollout_records
                 _update_metrics(metrics, record)
+                _update_rollout_metrics(metrics, rollout_records, vote)
 
                 if predictions_file is not None:
                     predictions_file.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -228,7 +237,10 @@ def _eval_benchmark(
             "sample_seed": sample_seed if selected_limit is not None else None,
             "stop_strings": settings["stop_strings"],
             "elapsed_seconds": elapsed_seconds,
-            "completion_tokens_per_second": metrics["completion_tokens"] / elapsed_seconds,
+            "completion_tokens_per_second": (
+                metrics["rollout_completion_tokens"] or metrics["completion_tokens"]
+            )
+            / elapsed_seconds,
         }
     )
     format_text = "n/a" if result["format_rate"] is None else f"{result['format_rate']:.3f}"
@@ -237,6 +249,73 @@ def _eval_benchmark(
         f"parse_rate={result['parse_rate']:.3f}, format_rate={format_text}"
     )
     return result
+
+
+def _score_completion(tokenizer, completion, *, reference, settings, max_new_tokens):
+    completion_tokens = len(tokenizer.encode(completion, add_special_tokens=False))
+    truncated = completion_tokens >= max_new_tokens - 1
+    prediction, extraction_method = extract_final_answer(
+        completion,
+        answer_kind=settings["answer_kind"],
+    )
+    if truncated and extraction_method in {"last_number", "last_choice"}:
+        parsed, correct = False, False
+    elif settings["answer_kind"] == "choice":
+        parsed, correct = check_choice_answer(reference, prediction)
+    else:
+        parsed, correct = check_answer(reference, prediction)
+    return {
+        "completion": completion,
+        "extracted_answer": prediction,
+        "extraction_method": extraction_method,
+        "parsed": parsed,
+        "correct": correct,
+        "format_ok": follows_answer_format(
+            completion,
+            answer_format=settings["required_answer_format"],
+        ),
+        "completion_tokens": completion_tokens,
+        "truncated": truncated,
+    }
+
+
+def _select_majority_vote(records, *, answer_kind):
+    clusters = []
+    valid_records = [record for record in records if record["parsed"]]
+    for record in valid_records:
+        for cluster in clusters:
+            if _answers_equivalent(
+                cluster[0]["extracted_answer"],
+                record["extracted_answer"],
+                answer_kind=answer_kind,
+            ):
+                cluster.append(record)
+                break
+        else:
+            clusters.append([record])
+
+    if not clusters:
+        return records[0], {
+            "vote_count": 0,
+            "valid_vote_count": 0,
+            "vote_tied": False,
+        }
+
+    vote_count = max(len(cluster) for cluster in clusters)
+    winners = [cluster for cluster in clusters if len(cluster) == vote_count]
+    return winners[0][0], {
+        "vote_count": vote_count,
+        "valid_vote_count": len(valid_records),
+        "vote_tied": len(winners) > 1,
+    }
+
+
+def _answers_equivalent(left, right, *, answer_kind):
+    if answer_kind == "choice":
+        parsed, equivalent = check_choice_answer(left, right)
+    else:
+        parsed, equivalent = check_answer(left, right)
+    return parsed and equivalent
 
 
 def _benchmark_examples(benchmark, cli_limit, *, sample_seed, shuffle_buffer_size):
@@ -310,6 +389,16 @@ def _empty_metrics():
         "by_source": {},
         "by_difficulty": {},
         "extraction_methods": {},
+        "rollout_total": 0,
+        "rollout_correct": 0,
+        "rollout_parsed": 0,
+        "rollout_formatted": 0,
+        "rollout_format_total": 0,
+        "rollout_truncated": 0,
+        "rollout_completion_tokens": 0,
+        "groups_with_any_correct": 0,
+        "vote_ties": 0,
+        "vote_groups": 0,
     }
 
 
@@ -343,6 +432,23 @@ def _update_metrics(metrics, record):
         bucket["completion_tokens"] += record["completion_tokens"]
 
 
+def _update_rollout_metrics(metrics, records, vote):
+    metrics["rollout_total"] += len(records)
+    metrics["rollout_correct"] += sum(record["correct"] for record in records)
+    metrics["rollout_parsed"] += sum(record["parsed"] for record in records)
+    metrics["rollout_truncated"] += sum(record["truncated"] for record in records)
+    metrics["rollout_completion_tokens"] += sum(
+        record["completion_tokens"] for record in records
+    )
+    formatted_records = [record for record in records if record["format_ok"] is not None]
+    metrics["rollout_format_total"] += len(formatted_records)
+    metrics["rollout_formatted"] += sum(record["format_ok"] for record in formatted_records)
+    metrics["groups_with_any_correct"] += int(any(record["correct"] for record in records))
+    if vote is not None:
+        metrics["vote_groups"] += 1
+        metrics["vote_ties"] += int(vote["vote_tied"])
+
+
 def _finish_metrics(metrics):
     total = metrics["total"]
     result = {
@@ -357,6 +463,30 @@ def _finish_metrics(metrics):
         "mean_completion_tokens": metrics["completion_tokens"] / total,
         "extraction_methods": metrics["extraction_methods"],
     }
+    if metrics["rollout_total"] > total:
+        result.update(
+            {
+                "rollouts_per_example": metrics["rollout_total"] / total,
+                "individual_rollout_accuracy": (
+                    metrics["rollout_correct"] / metrics["rollout_total"]
+                ),
+                "individual_rollout_parse_rate": (
+                    metrics["rollout_parsed"] / metrics["rollout_total"]
+                ),
+                "individual_rollout_format_rate": (
+                    metrics["rollout_formatted"] / metrics["rollout_format_total"]
+                    if metrics["rollout_format_total"]
+                    else None
+                ),
+                "individual_rollout_truncated": metrics["rollout_truncated"],
+                "mean_rollout_completion_tokens": (
+                    metrics["rollout_completion_tokens"] / metrics["rollout_total"]
+                ),
+                "pass_at_n": metrics["groups_with_any_correct"] / total,
+                "vote_ties": metrics["vote_ties"],
+                "vote_tie_rate": metrics["vote_ties"] / metrics["vote_groups"],
+            }
+        )
 
     if len(metrics["by_source"]) > 1:
         result["by_source"] = {

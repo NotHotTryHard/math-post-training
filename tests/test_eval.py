@@ -55,6 +55,35 @@ class FakeChoiceBackend:
         return [["After checking the options, the answer is C."] for _ in prompts]
 
 
+def test_majority_vote_groups_equivalent_math_answers():
+    records = [
+        {"extracted_answer": answer, "parsed": True, "correct": correct}
+        for answer, correct in [
+            (r"\frac{1}{2}", True),
+            ("0.5", True),
+            ("2", False),
+            ("3", False),
+        ]
+    ]
+
+    selected, vote = eval._select_majority_vote(records, answer_kind="math")
+
+    assert selected["correct"] is True
+    assert vote == {"vote_count": 2, "valid_vote_count": 4, "vote_tied": False}
+
+
+def test_majority_vote_uses_first_winner_for_a_tie():
+    records = [
+        {"extracted_answer": answer, "parsed": True, "correct": answer == "A"}
+        for answer in ["A", "B", "A", "B"]
+    ]
+
+    selected, vote = eval._select_majority_vote(records, answer_kind="choice")
+
+    assert selected["extracted_answer"] == "A"
+    assert vote == {"vote_count": 2, "valid_vote_count": 4, "vote_tied": True}
+
+
 def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
     class FakeTable:
         def __init__(self, columns):
