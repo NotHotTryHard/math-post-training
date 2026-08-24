@@ -20,6 +20,28 @@ Instruct checkpoint используется только как отдельн�
 revision, split, streaming и ограничение числа примеров. Python-адаптер источника отвечает только
 за приведение его исходных колонок к общей math-схеме.
 
+Оригинальный `zwhe99/DeepMath-103K` поддерживается адаптером `deepmath`. В отличие от
+урезанной TRL-копии, адаптер сохраняет `difficulty` и `topic`, использует `final_answer` как
+проверяемый ответ и `r1_solution_1` как SFT completion. Источник можно ограничивать до shuffle
+и `limit` прямо в YAML:
+
+```yaml
+- adapter: deepmath
+  path: zwhe99/DeepMath-103K
+  revision: 5cf055d1fe3d7a2eb19719ac020211469736ae44
+  split: train
+  streaming: true
+  filters:
+    difficulty_min: 3
+    difficulty_max: 6
+  shuffle_seed: 42
+  shuffle_buffer_size: 10_000
+  limit: 10_000
+```
+
+Дополнительно `filters.topics` принимает список точных значений `topic`. Эти же фильтры работают
+для training sources и evaluation benchmarks.
+
 `dataset.sources` используется и для одного источника, и для смеси. `limit` ограничивает число
 доступных строк конкретного источника после shuffle. `probability` нужна только при нескольких
 источниках и определяет вероятность выбрать источник при получении следующей строки смеси.
@@ -127,6 +149,13 @@ model-eval \
   --model /workspace/outputs/grpo/qwen2.5-1.5b-base-openmath-296k-native-eos-grpo-smoke
 ```
 
+DeepMath smoke-run с финального merged SFT checkpoint запускается отдельным конфигом:
+
+```bash
+model-grpo \
+  --config configs/grpo/qwen2_5_1_5b_openmath_296k_deepmath_grpo_smoke.yaml
+```
+
 ## Локальная генерация
 
 CLI использует `model` и `inference` из `configs/current.yaml`:
@@ -213,6 +242,16 @@ pipeline, но не следует сравнивать с MMLU-числами, 
 ```bash
 model-eval --model outputs/checkpoints/my-model
 ```
+
+Диагностический greedy-прогон `Qwen2.5-Math-1.5B-Instruct` на 10k строк DeepMath:
+
+```bash
+model-eval --config configs/eval/qwen2_5_math_1_5b_instruct_deepmath.yaml
+```
+
+Его `summary.json` дополнительно содержит `by_difficulty` с accuracy, parse rate, truncation rate
+и средней длиной для каждого уровня. Это диагностический прогон по training-датасету, а не
+внешний benchmark качества модели.
 
 Каждый запуск создаёт `summary.json` с метриками. Если `eval.save_predictions` включён,
 рядом сохраняется `predictions.jsonl.gz`: сжатые задачи, ответы и результаты проверки нужны для

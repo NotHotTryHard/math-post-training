@@ -26,6 +26,8 @@ PREDICTION_COLUMNS = [
     "benchmark",
     "index",
     "source",
+    "difficulty",
+    "topic",
     "problem",
     "reference_answer",
     "completion",
@@ -186,6 +188,8 @@ def _eval_benchmark(
                     "benchmark": name,
                     "index": metrics["total"],
                     "source": example["source"],
+                    "difficulty": example.get("difficulty"),
+                    "topic": example.get("topic"),
                     "problem": example["problem"],
                     "reference_answer": example["answer"],
                     "completion": completion,
@@ -244,6 +248,8 @@ def _benchmark_examples(benchmark, cli_limit, *, sample_seed, shuffle_buffer_siz
         "split": benchmark["split"],
         "streaming": benchmark.get("streaming", False),
     }
+    if "filters" in benchmark:
+        source_template["filters"] = benchmark["filters"]
     if selected_limit is not None:
         source_template["shuffle_seed"] = sample_seed
         source_template["shuffle_buffer_size"] = shuffle_buffer_size
@@ -302,6 +308,7 @@ def _empty_metrics():
         "truncated": 0,
         "completion_tokens": 0,
         "by_source": {},
+        "by_difficulty": {},
         "extraction_methods": {},
     }
 
@@ -321,6 +328,19 @@ def _update_metrics(metrics, record):
     source = metrics["by_source"].setdefault(record["source"], {"total": 0, "correct": 0})
     source["total"] += 1
     source["correct"] += int(record["correct"])
+
+    difficulty = record.get("difficulty")
+    if difficulty is not None:
+        key = f"{difficulty:g}"
+        bucket = metrics["by_difficulty"].setdefault(
+            key,
+            {"total": 0, "correct": 0, "parsed": 0, "truncated": 0, "completion_tokens": 0},
+        )
+        bucket["total"] += 1
+        bucket["correct"] += int(record["correct"])
+        bucket["parsed"] += int(record["parsed"])
+        bucket["truncated"] += int(record["truncated"])
+        bucket["completion_tokens"] += record["completion_tokens"]
 
 
 def _finish_metrics(metrics):
@@ -346,6 +366,21 @@ def _finish_metrics(metrics):
                 "accuracy": values["correct"] / values["total"],
             }
             for source, values in metrics["by_source"].items()
+        }
+    if metrics["by_difficulty"]:
+        result["by_difficulty"] = {
+            difficulty: {
+                "total": values["total"],
+                "correct": values["correct"],
+                "accuracy": values["correct"] / values["total"],
+                "parse_rate": values["parsed"] / values["total"],
+                "truncated": values["truncated"],
+                "truncation_rate": values["truncated"] / values["total"],
+                "mean_completion_tokens": values["completion_tokens"] / values["total"],
+            }
+            for difficulty, values in sorted(
+                metrics["by_difficulty"].items(), key=lambda item: float(item[0])
+            )
         }
     return result
 
@@ -432,6 +467,12 @@ def _log_wandb_results(run, prediction_tables, summary):
 
         for source, source_result in result.get("by_source", {}).items():
             run.summary[f"eval/{benchmark}/by_source/{source}/accuracy"] = source_result["accuracy"]
+
+        for difficulty, difficulty_result in result.get("by_difficulty", {}).items():
+            prefix = f"eval/{benchmark}/by_difficulty/{difficulty}"
+            run.summary[f"{prefix}/accuracy"] = difficulty_result["accuracy"]
+            run.summary[f"{prefix}/parse_rate"] = difficulty_result["parse_rate"]
+            run.summary[f"{prefix}/truncation_rate"] = difficulty_result["truncation_rate"]
 
     for benchmark, table in prediction_tables.items():
         run.log({f"eval/{benchmark}/predictions": table})

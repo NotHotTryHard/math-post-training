@@ -50,7 +50,7 @@ def build_eval_prompt(
     if protocol == "qwen2_5_math_base":
         if benchmark in {"gsm8k", "gsm1k"}:
             return GSM8K_BASE_PREFIX + problem + "\nLet's think step by step"
-        if benchmark == "math":
+        if benchmark in {"math", "deepmath"}:
             return MATH_BASE_PREFIX + problem + "\nSolution:"
         if benchmark == "mmlu_stem":
             return MMLU_BASE_PREFIX + _mmlu_base_target(problem)
@@ -62,7 +62,7 @@ def build_eval_prompt(
 def get_eval_settings(protocol, benchmark):
     """Return generation and answer-parsing settings fixed by the protocol."""
 
-    if benchmark not in {"gsm8k", "gsm1k", "math", "mmlu_stem"}:
+    if benchmark not in {"gsm8k", "gsm1k", "math", "deepmath", "mmlu_stem"}:
         raise ValueError(f"No evaluation settings are defined for benchmark {benchmark!r}")
 
     answer_kind = "choice" if benchmark == "mmlu_stem" else "math"
@@ -78,7 +78,7 @@ def get_eval_settings(protocol, benchmark):
         if benchmark in {"gsm8k", "gsm1k"}:
             num_shots = 8
             stop_strings = ["Question:", "[Question]", "\nQ:"]
-        elif benchmark == "math":
+        elif benchmark in {"math", "deepmath"}:
             num_shots = 4
             stop_strings = ["Problem:", "[Problem]", "\nQ:"]
         elif benchmark == "mmlu_stem":
@@ -98,7 +98,7 @@ def get_eval_settings(protocol, benchmark):
         "qwen2_5_math_base_zero_shot",
         "qwen2_5_math_base_zero_shot_cot",
     }:
-        if benchmark == "math":
+        if benchmark in {"math", "deepmath"}:
             stop_strings = ["Problem:", "[Problem]", "\nQ:"]
         else:
             stop_strings = ["Question:", "[Question]", "\nQ:"]
@@ -115,12 +115,12 @@ def get_eval_settings(protocol, benchmark):
 
 
 def _base_zero_shot_prompt(problem, benchmark):
-    label = "Problem" if benchmark == "math" else "Question"
+    label = "Problem" if benchmark in {"math", "deepmath"} else "Question"
     return f"{label}: {problem}\nAnswer:"
 
 
 def _base_zero_shot_cot_prompt(problem, benchmark):
-    if benchmark == "math":
+    if benchmark in {"math", "deepmath"}:
         return f"Problem: {problem}\nSolution:"
     if benchmark == "mmlu_stem":
         return (

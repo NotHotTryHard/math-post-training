@@ -53,6 +53,20 @@ def test_base_math_prompt_uses_four_shots_and_ends_with_target_problem():
     assert prompt.endswith("Problem: What is 1 + 1?\nSolution:")
 
 
+def test_deepmath_uses_math_answer_and_prompt_settings():
+    prompt = build_eval_prompt(
+        RecordingTokenizer(),
+        "What is 1 + 1?",
+        benchmark="deepmath",
+        protocol="qwen2_5_math_instruct",
+    )
+
+    assert prompt == "rendered prompt"
+    settings = get_eval_settings("qwen2_5_math_instruct", "deepmath")
+    assert settings["answer_kind"] == "math"
+    assert settings["required_answer_format"] == "boxed"
+
+
 def test_base_zero_shot_prompt_asks_for_a_direct_answer():
     prompt = build_eval_prompt(
         RecordingTokenizer(),

@@ -6,6 +6,11 @@ from math_verify import parse, verify
 def check_answer(reference, prediction):
     """Parse two mathematical answers and check their equivalence."""
 
+    reference_boolean = _boolean_answer(reference)
+    if reference_boolean is not None:
+        prediction_boolean = _boolean_answer(prediction)
+        return prediction_boolean is not None, prediction_boolean == reference_boolean
+
     reference_choices = _text_choices(reference)
     if reference_choices is not None:
         prediction_choices = _text_choices(prediction, allow_plain=True)
@@ -18,6 +23,22 @@ def check_answer(reference, prediction):
         return bool(parsed_prediction), False
 
     return True, verify(parsed_reference, parsed_prediction)
+
+
+def _boolean_answer(answer):
+    """Normalize DeepMath's equivalent Boolean final-answer spellings."""
+
+    answer = answer.strip().strip("$").strip().replace("\\\\", "\\")
+    for wrapper in (r"\text{", r"\mathrm{"):
+        if answer.startswith(wrapper) and answer.endswith("}"):
+            answer = answer[len(wrapper) : -1].strip()
+            break
+    normalized = answer.casefold()
+    if normalized in {"yes", "true"}:
+        return True
+    if normalized in {"no", "false"}:
+        return False
+    return None
 
 
 def _text_choices(answer, *, allow_plain=False):

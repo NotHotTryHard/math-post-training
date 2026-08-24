@@ -9,3 +9,5 @@ class MathExample:
     solution: str | None
     answer: str | None
     source: str
+    difficulty: float | None = None
+    topic: str | None = None

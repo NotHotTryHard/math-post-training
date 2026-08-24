@@ -37,11 +37,15 @@ def to_grpo_example(example):
 
     prompt = build_math_prompt(example["problem"])
     _reject_chatml(prompt, field="prompt")
-    return {
+    result = {
         "prompt": prompt,
         "answer": example["answer"],
         "source": example["source"],
     }
+    for field in ("difficulty", "topic"):
+        if example.get(field) is not None:
+            result[field] = example[field]
+    return result
 
 
 def _reject_chatml(text, *, field):

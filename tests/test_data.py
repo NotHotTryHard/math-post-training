@@ -4,6 +4,7 @@ from datasets import ClassLabel, Dataset, Features, IterableDataset, Value
 from math_post_training.data import loaders
 from math_post_training.data.preprocessing import to_grpo_example, to_sft_example
 from math_post_training.data.sources import (
+    deepmath,
     gsm1k,
     gsm8k,
     hendrycks_math,
@@ -40,6 +41,25 @@ def test_open_math_instruct_normalization_keeps_provenance():
 
     assert example.answer == "8"
     assert example.source == "nvidia/OpenMathInstruct-2:gsm8k"
+
+
+def test_deepmath_normalization_preserves_training_and_filter_metadata():
+    example = deepmath.normalize(
+        {
+            "question": "Is two even?",
+            "final_answer": "Yes",
+            "difficulty": 3.5,
+            "topic": "Mathematics -> Number Theory",
+            "r1_solution_1": "Two is divisible by two, so the answer is yes.",
+        }
+    )
+
+    assert example.problem == "Is two even?"
+    assert example.solution == "Two is divisible by two, so the answer is yes."
+    assert example.answer == "Yes"
+    assert example.source == "zwhe99/DeepMath-103K"
+    assert example.difficulty == 3.5
+    assert example.topic == "Mathematics -> Number Theory"
 
 
 def test_gsm1k_normalization():
@@ -103,6 +123,37 @@ def test_loader_does_not_reencode_normalized_mmlu_answer_as_class_label(monkeypa
     assert dataset[0]["answer"] == "C"
 
 
+def test_loader_filters_normalized_deepmath_before_limit(monkeypatch):
+    source = Dataset.from_list(
+        [
+            {
+                "question": f"problem-{difficulty}",
+                "final_answer": "1",
+                "difficulty": difficulty,
+                "topic": "algebra",
+                "r1_solution_1": "solution",
+            }
+            for difficulty in (3.0, 5.0, 7.0)
+        ]
+    )
+    monkeypatch.setattr(loaders, "load_dataset", lambda *args, **kwargs: source)
+
+    dataset = loaders.load_math_source(
+        {
+            "adapter": "deepmath",
+            "path": "zwhe99/DeepMath-103K",
+            "revision": "fixture",
+            "split": "train",
+            "filters": {"difficulty_min": 4, "difficulty_max": 6},
+            "limit": 1,
+        }
+    )
+
+    assert len(dataset) == 1
+    assert dataset[0]["problem"] == "problem-5.0"
+    assert dataset[0]["difficulty"] == 5.0
+
+
 def test_sft_and_grpo_share_the_exact_plain_text_prompt():
     example = {
         "problem": "What is 2 + 2?",
@@ -121,6 +172,25 @@ def test_sft_and_grpo_share_the_exact_plain_text_prompt():
         "prompt": expected_prompt,
         "answer": "4",
         "source": "fixture",
+    }
+
+
+def test_grpo_keeps_optional_dataset_metadata():
+    example = {
+        "problem": "What is 2 + 2?",
+        "solution": None,
+        "answer": "4",
+        "source": "fixture",
+        "difficulty": 3.0,
+        "topic": "arithmetic",
+    }
+
+    assert to_grpo_example(example) == {
+        "prompt": build_math_prompt("What is 2 + 2?"),
+        "answer": "4",
+        "source": "fixture",
+        "difficulty": 3.0,
+        "topic": "arithmetic",
     }
 
 

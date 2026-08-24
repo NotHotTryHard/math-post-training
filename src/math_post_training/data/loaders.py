@@ -3,6 +3,7 @@
 from datasets import Features, IterableDataset, Value, interleave_datasets, load_dataset
 
 from math_post_training.data.sources import (
+    deepmath,
     gsm1k,
     gsm8k,
     hendrycks_math,
@@ -11,6 +12,7 @@ from math_post_training.data.sources import (
 )
 
 NORMALIZERS = {
+    "deepmath": deepmath.normalize,
     "gsm1k": gsm1k.normalize,
     "gsm8k": gsm8k.normalize,
     "hendrycks_math": hendrycks_math.normalize,
@@ -24,6 +26,8 @@ NORMALIZED_FEATURES = Features(
         "solution": Value("string"),
         "answer": Value("string"),
         "source": Value("string"),
+        "difficulty": Value("float32"),
+        "topic": Value("string"),
     }
 )
 
@@ -65,9 +69,7 @@ def split_train_validation(dataset, config):
         return _make_replayable(train_dataset), _make_replayable(validation_dataset)
 
     if size >= len(dataset):
-        raise ValueError(
-            "dataset.validation.size must be smaller than the training dataset"
-        )
+        raise ValueError("dataset.validation.size must be smaller than the training dataset")
 
     split = dataset.train_test_split(test_size=size, seed=seed)
     return split["train"], split["test"]
@@ -86,6 +88,23 @@ def load_math_source(config):
         split=config["split"],
         streaming=streaming,
     )
+
+    original_columns = dataset.column_names
+    if original_columns is None:
+        raise ValueError("Dataset does not expose its column names")
+
+    def normalize(row):
+        return vars(normalizer(row))
+
+    dataset = dataset.map(
+        normalize,
+        remove_columns=original_columns,
+        features=NORMALIZED_FEATURES,
+    )
+
+    filters = config.get("filters")
+    if filters:
+        dataset = _filter_source(dataset, filters)
 
     shuffle_seed = config.get("shuffle_seed")
     if shuffle_seed is not None:
@@ -106,18 +125,31 @@ def load_math_source(config):
         else:
             dataset = dataset.select(range(min(limit, len(dataset))))
 
-    original_columns = dataset.column_names
-    if original_columns is None:
-        raise ValueError("Dataset does not expose its column names")
+    return dataset
 
-    def normalize(row):
-        return vars(normalizer(row))
 
-    return dataset.map(
-        normalize,
-        remove_columns=original_columns,
-        features=NORMALIZED_FEATURES,
-    )
+def _filter_source(dataset, config):
+    """Filter normalized rows by metadata shared by training and evaluation."""
+
+    difficulty_min = config.get("difficulty_min")
+    difficulty_max = config.get("difficulty_max")
+    topics = config.get("topics")
+    if difficulty_min is None and difficulty_max is None and not topics:
+        raise ValueError(
+            "dataset source filters must define difficulty_min, difficulty_max, or topics"
+        )
+
+    selected_topics = set(topics or [])
+
+    def keep(row):
+        difficulty = row["difficulty"]
+        if difficulty_min is not None and (difficulty is None or difficulty < difficulty_min):
+            return False
+        if difficulty_max is not None and (difficulty is None or difficulty > difficulty_max):
+            return False
+        return not selected_topics or row["topic"] in selected_topics
+
+    return dataset.filter(keep)
 
 
 def _make_replayable(dataset):

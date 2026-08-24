@@ -9,7 +9,11 @@ import pytest
 from math_post_training import eval
 from math_post_training.config import load_yaml_config
 
-BASELINE_CONFIGS = sorted((Path(__file__).parents[1] / "configs" / "eval").glob("*.yaml"))
+BASELINE_CONFIGS = sorted(
+    path
+    for path in (Path(__file__).parents[1] / "configs" / "eval").glob("*.yaml")
+    if "deepmath" not in path.stem
+)
 MMLU_STEM_SUBSETS = {
     "abstract_algebra",
     "anatomy",
@@ -229,6 +233,33 @@ def test_metric_aggregation_separates_accuracy_from_parse_rate():
     assert result["correct"] == 1
     assert result["accuracy"] == pytest.approx(1 / 3)
     assert result["parse_rate"] == pytest.approx(2 / 3)
+
+
+def test_metric_aggregation_reports_deepmath_difficulty_buckets():
+    metrics = eval._empty_metrics()
+    for correct, parsed, truncated, completion_tokens in (
+        (True, True, False, 100),
+        (False, True, True, 200),
+    ):
+        eval._update_metrics(
+            metrics,
+            {
+                "correct": correct,
+                "parsed": parsed,
+                "format_ok": True,
+                "truncated": truncated,
+                "completion_tokens": completion_tokens,
+                "extraction_method": "boxed",
+                "source": "zwhe99/DeepMath-103K",
+                "difficulty": 5.0,
+            },
+        )
+
+    bucket = eval._finish_metrics(metrics)["by_difficulty"]["5"]
+    assert bucket["accuracy"] == 0.5
+    assert bucket["parse_rate"] == 1.0
+    assert bucket["truncation_rate"] == 0.5
+    assert bucket["mean_completion_tokens"] == 150
 
 
 @pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)

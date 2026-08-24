@@ -1,0 +1,44 @@
+experiment:
+  name: qwen2.5-math-1.5b-instruct-deepmath
+
+model:
+  name_or_path: Qwen/Qwen2.5-Math-1.5B-Instruct
+  dtype: auto
+  trust_remote_code: false
+
+vllm:
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.9
+  max_model_len: 8192
+  enable_prefix_caching: true
+
+eval:
+  backend: vllm
+  protocol: qwen2_5_math_instruct
+  output_dir: outputs/eval
+  sample_seed: 42
+  shuffle_buffer_size: 10_000
+  batch_size: 256
+  save_predictions: true
+  wandb:
+    enabled: true
+    log_predictions: true
+  generation:
+    max_new_tokens: 4096
+    num_return_sequences: 1
+    do_sample: false
+    temperature: 0.0
+    top_p: 1.0
+    seed: 42
+  benchmarks:
+    - name: deepmath
+      adapter: deepmath
+      path: zwhe99/DeepMath-103K
+      subset: null
+      revision: 5cf055d1fe3d7a2eb19719ac020211469736ae44
+      split: train
+      streaming: true
+      limit: 10_000
+      filters:
+        difficulty_min: 3
+        difficulty_max: 9

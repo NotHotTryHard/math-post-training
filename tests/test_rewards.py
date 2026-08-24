@@ -36,6 +36,15 @@ def test_accuracy_reward_rejects_misaligned_batches():
         accuracy_reward([_completion(r"\\boxed{1}")], ["1", "2"])
 
 
+def test_accuracy_reward_handles_deepmath_boolean_answers():
+    completions = [
+        _completion(r"Therefore, \\boxed{\\text{True}}."),
+        _completion(r"Therefore, \\boxed{No}."),
+    ]
+
+    assert accuracy_reward(completions, ["Yes", "False"]) == [1.0, 1.0]
+
+
 def test_reward_rejects_a_malformed_conversational_completion():
     with pytest.raises(TypeError, match="non-empty list of messages"):
         boxed_format_reward([[]])
