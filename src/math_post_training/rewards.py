@@ -2,6 +2,7 @@
 
 from math_post_training.verifiers.extraction import (
     extract_final_answer,
+    extract_last_boxed,
     follows_answer_format,
 )
 from math_post_training.verifiers.math import check_answer
@@ -26,6 +27,25 @@ def boxed_format_reward(completions, **_kwargs):
         float(follows_answer_format(_completion_text(completion), answer_format="boxed"))
         for completion in completions
     ]
+
+
+def strict_boxed_reward(completions, answer, **_kwargs):
+    """Reward only a verified boxed answer and penalize a missing box.
+
+    A correct ``\\boxed{}`` earns 1, an incorrect box earns 0, and a missing or
+    incomplete box earns -0.5.  Unlike :func:`accuracy_reward`, this deliberately
+    has no delimiter, answer-marker, or last-number fallback.
+    """
+
+    rewards = []
+    for completion, reference in zip(completions, answer, strict=True):
+        prediction = extract_last_boxed(_completion_text(completion))
+        if prediction is None:
+            rewards.append(-0.5)
+            continue
+        _, correct = check_answer(reference, prediction)
+        rewards.append(float(correct))
+    return rewards
 
 
 def _completion_text(completion):

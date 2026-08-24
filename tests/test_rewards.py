@@ -1,6 +1,10 @@
 import pytest
 
-from math_post_training.rewards import accuracy_reward, boxed_format_reward
+from math_post_training.rewards import (
+    accuracy_reward,
+    boxed_format_reward,
+    strict_boxed_reward,
+)
 
 
 def _completion(text):
@@ -24,6 +28,12 @@ def test_boxed_format_reward_accepts_only_complete_boxes():
     ]
 
     assert boxed_format_reward(completions) == [1.0, 0.0, 0.0]
+
+
+def test_strict_boxed_reward_penalizes_missing_box_without_fallback():
+    completions = [r"Answer: \\boxed{7}", r"The answer is 7", r"\\boxed{8}"]
+
+    assert strict_boxed_reward(completions, ["7", "7", "7"]) == [1.0, -0.5, 0.0]
 
 
 def test_rewards_accept_plain_completion_text():

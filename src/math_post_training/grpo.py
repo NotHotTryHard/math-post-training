@@ -9,9 +9,17 @@ from trl import GRPOConfig, GRPOTrainer
 from math_post_training.data.loaders import load_math_dataset, split_train_validation
 from math_post_training.data.preprocessing import to_grpo_example
 from math_post_training.model import load_tokenizer, prepare_math_policy_tokenizer
-from math_post_training.rewards import accuracy_reward, boxed_format_reward
+from math_post_training.rewards import (
+    accuracy_reward,
+    boxed_format_reward,
+    strict_boxed_reward,
+)
 
 REWARD_FUNCTIONS = [accuracy_reward, boxed_format_reward]
+REWARD_PROFILES = {
+    "accuracy_and_format": REWARD_FUNCTIONS,
+    "strict_boxed": [strict_boxed_reward],
+}
 
 
 def train_grpo(config, *, resume_from_checkpoint=None):
@@ -22,6 +30,7 @@ def train_grpo(config, *, resume_from_checkpoint=None):
     adapter_name = model_config.get("adapter_name_or_path")
     training_config = dict(config["grpo"])
     output_dir = Path(training_config["output_dir"])
+    reward_funcs = _reward_functions(config.get("rewards"))
 
     tokenizer = load_tokenizer(
         adapter_name or model_name,
@@ -52,7 +61,7 @@ def train_grpo(config, *, resume_from_checkpoint=None):
 
     trainer = GRPOTrainer(
         model=policy,
-        reward_funcs=REWARD_FUNCTIONS,
+        reward_funcs=reward_funcs,
         args=GRPOConfig(**training_config),
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
@@ -97,6 +106,19 @@ def _prepare_dataset(dataset, *, name):
         to_grpo_example,
         remove_columns=original_columns,
     )
+
+
+def _reward_functions(config):
+    """Resolve an explicit reward profile while preserving the legacy default."""
+
+    profile = "accuracy_and_format" if config is None else config["profile"]
+    try:
+        return REWARD_PROFILES[profile]
+    except KeyError as error:
+        supported = ", ".join(sorted(REWARD_PROFILES))
+        raise ValueError(
+            f"Unknown rewards.profile {profile!r}; expected one of: {supported}"
+        ) from error
 
 
 def _save_model(trainer, tokenizer, output_dir):

@@ -208,10 +208,14 @@ def test_merge_adapter_loads_base_weights_then_merges_sft_lora(monkeypatch):
 
 @pytest.mark.parametrize("path", GRPO_CONFIGS)
 def test_grpo_configs_are_accepted_by_trl(path):
-    training_config = dict(load_yaml_config(path)["grpo"])
+    config = load_yaml_config(path)
+    training_config = dict(config["grpo"])
     training_config.update(bf16=False, tf32=False)
 
     args = grpo.GRPOConfig(**training_config)
 
     assert args.generation_batch_size % args.num_generations == 0
-    assert args.reward_weights == [1.0, 0.1]
+    if config.get("rewards", {}).get("profile") == "strict_boxed":
+        assert args.reward_weights is None
+    else:
+        assert args.reward_weights == [1.0, 0.1]
