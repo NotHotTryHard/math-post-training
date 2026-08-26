@@ -291,17 +291,25 @@ configs/
 └── current.yaml         # Текущий локальный эксперимент.
 
 src/math_post_training/
-├── cli.py               # Тонкая сборка model + prompt + generation для CLI.
+├── artifacts.py         # Единый layout adapter и merged policy checkpoint.
+├── cli.py               # Основные generate/eval/SFT/GRPO CLI.
+├── checkpoint_eval.py   # Последовательный eval сохранённых checkpoint-ов.
 ├── config.py            # Загрузка YAML-конфигурации.
+├── curation.py          # Фильтрация rollout-датасетов.
 ├── grpo.py              # Online RL через TRL GRPOTrainer и rule-based rewards.
 ├── model.py             # Общая загрузка model/tokenizer из HF или checkpoint-а.
 ├── rewards.py           # Проверяемые correctness и format rewards.
+├── rollouts.py          # Resumable vLLM rollouts для math-датасетов.
 ├── sft.py               # Независимый запуск supervised fine-tuning через TRL.
 ├── prompts/             # Финальный model input, разнесённый по сценариям.
 │   ├── eval.py          # Явные Qwen Base/Instruct evaluation protocols.
 │   ├── inference.py     # Prompt для ручного model-generate.
 │   └── training.py      # Единый plain-text prompt для SFT, GRPO, eval и inference.
-├── eval.py              # Evaluation loop, метрики, tqdm и W&B-логирование.
+├── evaluation/
+│   ├── runner.py        # Benchmark loop и durable artifacts.
+│   ├── scoring.py       # Общая проверка completions и majority vote.
+│   ├── metrics.py       # Накопление итоговых и rollout-метрик.
+│   └── reporting.py     # Опциональное W&B-логирование.
 ├── data/
 │   ├── schema.py        # Канонический MathExample.
 │   ├── loaders.py       # Загрузка, sampling и нормализация датасета.

@@ -6,9 +6,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from math_post_training import eval
 from math_post_training.config import load_yaml_config
-from math_post_training.evaluation import runner
+from math_post_training.evaluation import eval_model, runner
+from math_post_training.evaluation.metrics import EvaluationMetrics
+from math_post_training.evaluation.runner import _benchmark_examples
+from math_post_training.evaluation.scoring import select_majority_vote
 
 BASELINE_CONFIGS = sorted(
     path
@@ -70,7 +72,7 @@ def test_majority_vote_groups_equivalent_math_answers():
         ]
     ]
 
-    selected, vote = eval._select_majority_vote(records, answer_kind="math")
+    selected, vote = select_majority_vote(records, answer_kind="math")
 
     assert selected["correct"] is True
     assert vote == {"vote_count": 2, "valid_vote_count": 4, "vote_tied": False}
@@ -82,7 +84,7 @@ def test_majority_vote_uses_first_winner_for_a_tie():
         for answer in ["A", "B", "A", "B"]
     ]
 
-    selected, vote = eval._select_majority_vote(records, answer_kind="choice")
+    selected, vote = select_majority_vote(records, answer_kind="choice")
 
     assert selected["extracted_answer"] == "A"
     assert vote == {"vote_count": 2, "valid_vote_count": 4, "vote_tied": True}
@@ -163,9 +165,7 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
         },
     }
 
-    run_dir, summary = eval.eval_model(
-        FakeBackend(), FakeTokenizer(), config, model_name="fake-model"
-    )
+    run_dir, summary = eval_model(FakeBackend(), FakeTokenizer(), config, model_name="fake-model")
 
     assert summary["benchmarks"]["gsm8k"]["accuracy"] == 1.0
     assert json.loads((run_dir / "summary.json").read_text())["model"] == "fake-model"
@@ -230,7 +230,7 @@ def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
         },
     }
 
-    run_dir, summary = eval.eval_model(
+    run_dir, summary = eval_model(
         TruncatedBackend(), FakeTokenizer(), config, model_name="fake-model"
     )
 
@@ -245,10 +245,9 @@ def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
 
 
 def test_metric_aggregation_separates_accuracy_from_parse_rate():
-    metrics = eval._empty_metrics()
+    metrics = EvaluationMetrics()
     for parsed, correct in [(True, True), (True, False), (False, False)]:
-        eval._update_metrics(
-            metrics,
+        metrics.add(
             {
                 "parsed": parsed,
                 "correct": correct,
@@ -260,7 +259,7 @@ def test_metric_aggregation_separates_accuracy_from_parse_rate():
             },
         )
 
-    result = eval._finish_metrics(metrics)
+    result = metrics.finish()
 
     assert result["total"] == 3
     assert result["correct"] == 1
@@ -269,13 +268,12 @@ def test_metric_aggregation_separates_accuracy_from_parse_rate():
 
 
 def test_metric_aggregation_reports_deepmath_difficulty_buckets():
-    metrics = eval._empty_metrics()
+    metrics = EvaluationMetrics()
     for correct, parsed, truncated, completion_tokens in (
         (True, True, False, 100),
         (False, True, True, 200),
     ):
-        eval._update_metrics(
-            metrics,
+        metrics.add(
             {
                 "correct": correct,
                 "parsed": parsed,
@@ -288,7 +286,7 @@ def test_metric_aggregation_reports_deepmath_difficulty_buckets():
             },
         )
 
-    bucket = eval._finish_metrics(metrics)["by_difficulty"]["5"]
+    bucket = metrics.finish()["by_difficulty"]["5"]
     assert bucket["accuracy"] == 0.5
     assert bucket["parse_rate"] == 1.0
     assert bucket["truncation_rate"] == 0.5
@@ -325,7 +323,7 @@ def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path
     config = load_yaml_config(config_path)
     config["eval"]["wandb"]["enabled"] = False
 
-    _, summary = eval.eval_model(
+    _, summary = eval_model(
         ConfigBackend(),
         FakeTokenizer(),
         config,
@@ -374,7 +372,7 @@ def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
     }
 
     examples = list(
-        eval._benchmark_examples(
+        _benchmark_examples(
             benchmark,
             cli_limit=5,
             sample_seed=42,
@@ -401,7 +399,7 @@ def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
     }
 
     list(
-        eval._benchmark_examples(
+        _benchmark_examples(
             benchmark,
             cli_limit=5,
             sample_seed=123,
@@ -457,7 +455,7 @@ def test_mmlu_uses_fixed_paper_shots_and_exact_choice_grading(monkeypatch, tmp_p
         },
     }
 
-    _, summary = eval.eval_model(
+    _, summary = eval_model(
         FakeChoiceBackend(),
         FakeTokenizer(),
         config,

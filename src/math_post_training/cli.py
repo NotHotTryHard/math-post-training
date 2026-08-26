@@ -124,7 +124,7 @@ def eval_main(argv=None):
         vllm_config=config.get("vllm", {}),
     )
 
-    from math_post_training.eval import eval_model
+    from math_post_training.evaluation import eval_model
 
     run_dir, _ = eval_model(
         backend,
