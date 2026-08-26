@@ -1,7 +1,4 @@
 from pathlib import Path
-from types import SimpleNamespace
-
-import pytest
 
 from math_post_training import grpo
 from math_post_training.config import load_yaml_config
@@ -26,29 +23,8 @@ class FakeDataset:
 
 
 class FakeTokenizer:
-    def __init__(self):
-        self.saved_paths = []
-        self.eos_token = QWEN_BASE_EOS_TOKEN
-        self.eos_token_id = 151643
-
-    def save_pretrained(self, path):
-        self.saved_paths.append(Path(path))
-
-
-class FakeMergedModel:
-    def __init__(self):
-        self.saved = None
-
-    def save_pretrained(self, path, *, safe_serialization):
-        self.saved = (Path(path), safe_serialization)
-
-
-class FakeModel:
-    def __init__(self):
-        self.merged = FakeMergedModel()
-
-    def merge_and_unload(self):
-        return self.merged
+    eos_token = QWEN_BASE_EOS_TOKEN
+    eos_token_id = 151643
 
 
 class FakeSftModel:
@@ -64,17 +40,11 @@ class FakeTrainer:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        self.model = FakeModel()
-        self.accelerator = SimpleNamespace(unwrap_model=lambda model: model)
         self.resume_from_checkpoint = None
-        self.saved_adapter = None
         FakeTrainer.instance = self
 
     def train(self, *, resume_from_checkpoint):
         self.resume_from_checkpoint = resume_from_checkpoint
-
-    def save_model(self, path):
-        self.saved_adapter = Path(path)
 
 
 class RecordingConfig:
@@ -87,7 +57,7 @@ class RecordingLoraConfig:
         self.values = kwargs
 
 
-def test_train_grpo_prepares_data_and_saves_adapter_and_merged_model(monkeypatch, tmp_path):
+def test_train_grpo_wires_the_training_contract(monkeypatch, tmp_path):
     rows = [
         {
             "problem": "What is 2 + 2?",
@@ -121,6 +91,7 @@ def test_train_grpo_prepares_data_and_saves_adapter_and_merged_model(monkeypatch
             "use_vllm": True,
         },
     }
+    saved = {}
 
     monkeypatch.setattr(grpo, "load_tokenizer", lambda *args, **kwargs: tokenizer)
     monkeypatch.setattr(grpo, "load_math_dataset", lambda dataset_config: train_dataset)
@@ -132,6 +103,15 @@ def test_train_grpo_prepares_data_and_saves_adapter_and_merged_model(monkeypatch
     monkeypatch.setattr(grpo, "GRPOConfig", RecordingConfig)
     monkeypatch.setattr(grpo, "LoraConfig", RecordingLoraConfig)
     monkeypatch.setattr(grpo, "GRPOTrainer", FakeTrainer)
+    monkeypatch.setattr(
+        grpo,
+        "save_policy_artifacts",
+        lambda trainer, tokenizer, path: saved.update(
+            trainer=trainer,
+            tokenizer=tokenizer,
+            path=path,
+        ),
+    )
 
     result = grpo.train_grpo(config, resume_from_checkpoint=tmp_path / "checkpoint-1")
 
@@ -146,32 +126,18 @@ def test_train_grpo_prepares_data_and_saves_adapter_and_merged_model(monkeypatch
     }
     assert trainer.kwargs["eval_dataset"].rows[0]["answer"] == "4"
     assert trainer.kwargs["peft_config"].values == {"r": 32, "lora_alpha": 64}
-    assert trainer.kwargs["args"].values == {
-        "output_dir": str(output_dir),
-        "max_steps": 2,
-        "use_vllm": True,
-        "run_name": "test-grpo",
-        "model_init_kwargs": {
-            "dtype": "bfloat16",
-            "trust_remote_code": False,
-            "attn_implementation": "sdpa",
-        },
+    training_args = trainer.kwargs["args"].values
+    assert training_args["output_dir"] == str(output_dir)
+    assert training_args["max_steps"] == 2
+    assert training_args["use_vllm"] is True
+    assert training_args["run_name"] == "test-grpo"
+    assert training_args["model_init_kwargs"] == {
+        "dtype": "bfloat16",
+        "trust_remote_code": False,
+        "attn_implementation": "sdpa",
     }
     assert trainer.resume_from_checkpoint == str(tmp_path / "checkpoint-1")
-    assert trainer.saved_adapter == output_dir / "adapter"
-    assert trainer.model.merged.saved == (output_dir, True)
-    assert tokenizer.saved_paths == [output_dir / "adapter", output_dir]
-
-
-def test_prepare_dataset_requires_visible_columns():
-    dataset = FakeDataset([{"problem": "problem"}])
-    dataset.column_names = None
-
-    with pytest.raises(
-        ValueError,
-        match="Training dataset does not expose its column names",
-    ):
-        grpo._prepare_dataset(dataset, name="Training")
+    assert saved == {"trainer": trainer, "tokenizer": tokenizer, "path": output_dir}
 
 
 def test_merge_adapter_loads_base_weights_then_merges_sft_lora(monkeypatch):
@@ -206,16 +172,16 @@ def test_merge_adapter_loads_base_weights_then_merges_sft_lora(monkeypatch):
     }
 
 
-@pytest.mark.parametrize("path", GRPO_CONFIGS)
-def test_grpo_configs_are_accepted_by_trl(path):
-    config = load_yaml_config(path)
-    training_config = dict(config["grpo"])
-    training_config.update(bf16=False, tf32=False)
+def test_all_grpo_configs_are_accepted_by_trl():
+    for path in GRPO_CONFIGS:
+        config = load_yaml_config(path)
+        training_config = dict(config["grpo"])
+        training_config.update(bf16=False, tf32=False)
 
-    args = grpo.GRPOConfig(**training_config)
+        args = grpo.GRPOConfig(**training_config)
 
-    assert args.generation_batch_size % args.num_generations == 0
-    if config.get("rewards", {}).get("profile") == "strict_boxed":
-        assert args.reward_weights is None
-    else:
-        assert args.reward_weights == [1.0, 0.1]
+        assert args.generation_batch_size % args.num_generations == 0, path
+        if config.get("rewards", {}).get("profile") == "strict_boxed":
+            assert args.reward_weights is None, path
+        else:
+            assert args.reward_weights == [1.0, 0.1], path

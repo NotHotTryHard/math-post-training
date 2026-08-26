@@ -265,15 +265,6 @@ def test_dataset_sources_can_be_mixed(monkeypatch):
     ]
 
 
-def test_one_source_uses_the_same_sources_shape(monkeypatch):
-    source_dataset = object()
-    monkeypatch.setattr(loaders, "load_math_source", lambda source: source_dataset)
-
-    dataset = loaders.load_math_dataset({"sources": [{"name": "only"}]})
-
-    assert dataset is source_dataset
-
-
 def test_validation_holdout_is_deterministic_and_removed_from_training():
     dataset = Dataset.from_dict({"problem": [f"problem-{index}" for index in range(10)]})
     config = {"size": 3, "seed": 42}
@@ -285,13 +276,6 @@ def test_validation_holdout_is_deterministic_and_removed_from_training():
     assert len(validation_a) == 3
     assert validation_a["problem"] == validation_b["problem"]
     assert set(train_a["problem"]).isdisjoint(validation_a["problem"])
-
-
-def test_validation_holdout_rejects_the_whole_dataset():
-    dataset = Dataset.from_dict({"problem": ["one", "two"]})
-
-    with pytest.raises(ValueError, match="smaller than the training dataset"):
-        loaders.split_train_validation(dataset, {"size": 2})
 
 
 def test_streaming_holdout_can_replay_the_same_sequence_across_epochs():

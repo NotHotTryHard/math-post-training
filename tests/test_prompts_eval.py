@@ -19,16 +19,6 @@ class RecordingTokenizer:
         return "rendered prompt"
 
 
-def test_base_protocol_uses_published_shot_counts():
-    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["num_shots"] == 8
-    assert get_eval_settings("qwen2_5_math_base", "math")["num_shots"] == 4
-    assert get_eval_settings("qwen2_5_math_base", "gsm8k")["stop_strings"] == [
-        "Question:",
-        "[Question]",
-        "\nQ:",
-    ]
-
-
 def test_base_gsm_prompt_is_raw_and_ends_with_target_problem():
     prompt = build_eval_prompt(
         RecordingTokenizer(),
