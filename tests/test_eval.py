@@ -8,6 +8,7 @@ import pytest
 
 from math_post_training import eval
 from math_post_training.config import load_yaml_config
+from math_post_training.evaluation import runner
 
 BASELINE_CONFIGS = sorted(
     path
@@ -121,7 +122,7 @@ def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
         SimpleNamespace(init=init_wandb, Table=FakeTable),
     )
     monkeypatch.setattr(
-        eval,
+        runner,
         "load_math_source",
         lambda source: iter(
             [
@@ -189,7 +190,7 @@ def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
             return [["unfinished reasoning gives 4"] for _ in prompts]
 
     monkeypatch.setattr(
-        eval,
+        runner,
         "load_math_source",
         lambda source: iter(
             [
@@ -320,7 +321,7 @@ def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path
                 for prompt in prompts
             ]
 
-    monkeypatch.setattr(eval, "load_math_source", load)
+    monkeypatch.setattr(runner, "load_math_source", load)
     config = load_yaml_config(config_path)
     config["eval"]["wandb"]["enabled"] = False
 
@@ -351,7 +352,7 @@ def test_baseline_configs_use_the_full_mmlu_stem_test_split(config_path):
 
 def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
     monkeypatch.setattr(
-        eval,
+        runner,
         "load_math_source",
         lambda source: iter(
             [
@@ -391,7 +392,7 @@ def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
         seen.append(source)
         return iter([])
 
-    monkeypatch.setattr(eval, "load_math_source", load)
+    monkeypatch.setattr(runner, "load_math_source", load)
     benchmark = {
         "adapter": "fixture",
         "path": "fixture",
@@ -428,7 +429,7 @@ def test_mmlu_uses_fixed_paper_shots_and_exact_choice_grading(monkeypatch, tmp_p
             for index in range(1)
         )
 
-    monkeypatch.setattr(eval, "load_math_source", load)
+    monkeypatch.setattr(runner, "load_math_source", load)
     config = {
         "experiment": {"name": "mmlu-eval"},
         "eval": {
