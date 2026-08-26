@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from peft import LoraConfig
 from trl import SFTConfig, SFTTrainer
 
+from math_post_training.artifacts import save_policy_artifacts
 from math_post_training.data.loaders import (
     load_math_dataset,
     split_train_validation,
@@ -79,15 +80,7 @@ def train_sft(config, *, resume_from_checkpoint=None):
             str(resume_from_checkpoint) if resume_from_checkpoint is not None else None
         )
     )
-    adapter_dir = output_dir / "adapter"
-    trainer.save_model(adapter_dir)
-    tokenizer.save_pretrained(adapter_dir)
-    _remove_root_adapter_files(output_dir)
-
-    model = trainer.accelerator.unwrap_model(trainer.model)
-    merged_model = model.merge_and_unload()
-    merged_model.save_pretrained(output_dir, safe_serialization=True)
-    tokenizer.save_pretrained(output_dir)
+    save_policy_artifacts(trainer, tokenizer, output_dir)
 
     return output_dir
 
@@ -114,20 +107,11 @@ def _weighted_eos_loss(eos_token_id, eos_loss_weight):
         weights[flat_labels == eos_token_id] = eos_loss_weight
         weighted_loss = (token_loss * weights).sum()
         denominator = (
-            num_items_in_batch
-            if num_items_in_batch is not None
-            else (flat_labels != -100).sum()
+            num_items_in_batch if num_items_in_batch is not None else (flat_labels != -100).sum()
         )
         return weighted_loss / denominator.clamp_min(1)
 
     return compute_loss
-
-
-def _remove_root_adapter_files(output_dir):
-    """Keep Hub-managed PEFT weights from being mixed with merged model weights."""
-
-    for filename in ("adapter_config.json", "adapter_model.bin", "adapter_model.safetensors"):
-        (output_dir / filename).unlink(missing_ok=True)
 
 
 def _prepare_dataset(dataset, *, name, eos_token):

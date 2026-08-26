@@ -6,6 +6,7 @@ from peft import LoraConfig, PeftModel
 from transformers import AutoModelForCausalLM
 from trl import GRPOConfig, GRPOTrainer
 
+from math_post_training.artifacts import save_policy_artifacts
 from math_post_training.data.loaders import load_math_dataset, split_train_validation
 from math_post_training.data.preprocessing import to_grpo_example
 from math_post_training.model import load_tokenizer, prepare_math_policy_tokenizer
@@ -73,7 +74,7 @@ def train_grpo(config, *, resume_from_checkpoint=None):
             str(resume_from_checkpoint) if resume_from_checkpoint is not None else None
         )
     )
-    _save_model(trainer, tokenizer, output_dir)
+    save_policy_artifacts(trainer, tokenizer, output_dir)
     return output_dir
 
 
@@ -119,16 +120,3 @@ def _reward_functions(config):
         raise ValueError(
             f"Unknown rewards.profile {profile!r}; expected one of: {supported}"
         ) from error
-
-
-def _save_model(trainer, tokenizer, output_dir):
-    """Save both the lightweight adapter and a merged inference checkpoint."""
-
-    adapter_dir = output_dir / "adapter"
-    trainer.save_model(adapter_dir)
-    tokenizer.save_pretrained(adapter_dir)
-
-    model = trainer.accelerator.unwrap_model(trainer.model)
-    merged_model = model.merge_and_unload()
-    merged_model.save_pretrained(output_dir, safe_serialization=True)
-    tokenizer.save_pretrained(output_dir)
