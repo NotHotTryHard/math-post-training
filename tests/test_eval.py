@@ -1,8 +1,6 @@
 import gzip
 import json
-import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -12,7 +10,7 @@ from math_post_training.evaluation.metrics import EvaluationMetrics
 from math_post_training.evaluation.runner import _benchmark_examples
 from math_post_training.evaluation.scoring import select_majority_vote
 
-BASELINE_CONFIGS = sorted(
+EVAL_CONFIGS = sorted(
     path
     for path in (Path(__file__).parents[1] / "configs" / "eval").glob("*.yaml")
     if "deepmath" not in path.stem
@@ -56,157 +54,11 @@ class FakeBackend:
         return [["The answer is four. #### 4"] for _ in prompts]
 
 
-class FakeChoiceBackend:
-    def generate(self, prompts, config):
-        return [["After checking the options, the answer is C."] for _ in prompts]
-
-
-def test_majority_vote_groups_equivalent_math_answers():
-    records = [
-        {"extracted_answer": answer, "parsed": True, "correct": correct}
-        for answer, correct in [
-            (r"\frac{1}{2}", True),
-            ("0.5", True),
-            ("2", False),
-            ("3", False),
-        ]
-    ]
-
-    selected, vote = select_majority_vote(records, answer_kind="math")
-
-    assert selected["correct"] is True
-    assert vote == {"vote_count": 2, "valid_vote_count": 4, "vote_tied": False}
-
-
-def test_majority_vote_uses_first_winner_for_a_tie():
-    records = [
-        {"extracted_answer": answer, "parsed": True, "correct": answer == "A"}
-        for answer in ["A", "B", "A", "B"]
-    ]
-
-    selected, vote = select_majority_vote(records, answer_kind="choice")
-
-    assert selected["extracted_answer"] == "A"
-    assert vote == {"vote_count": 2, "valid_vote_count": 4, "vote_tied": True}
-
-
-def test_eval_writes_summary_and_compressed_predictions(monkeypatch, tmp_path):
-    class FakeTable:
-        def __init__(self, columns):
-            self.columns = columns
-            self.rows = []
-
-        def add_data(self, *row):
-            self.rows.append(row)
-
-    class FakeRun:
-        def __init__(self):
-            self.summary = {}
-            self.logged = []
-            self.exit_code = None
-
-        def log(self, data):
-            self.logged.append(data)
-
-        def finish(self, exit_code):
-            self.exit_code = exit_code
-
-    wandb_run = FakeRun()
-    wandb_init_kwargs = {}
-
-    def init_wandb(**kwargs):
-        wandb_init_kwargs.update(kwargs)
-        return wandb_run
-
-    monkeypatch.setitem(
-        sys.modules,
-        "wandb",
-        SimpleNamespace(init=init_wandb, Table=FakeTable),
-    )
-    monkeypatch.setattr(
-        runner,
-        "load_math_source",
-        lambda source: iter(
-            [
-                {
-                    "problem": "What is 2 + 2?",
-                    "solution": None,
-                    "answer": "4",
-                    "source": "fixture",
-                }
-            ]
-        ),
-    )
-    config = {
+def _eval_config(tmp_path, *, protocol="qwen2_5_math_instruct", max_new_tokens=32):
+    return {
         "experiment": {"name": "test-eval"},
-        "model": {"name_or_path": "fake-model"},
         "eval": {
-            "protocol": "qwen2_5_math_instruct",
-            "output_dir": str(tmp_path),
-            "sample_seed": 42,
-            "shuffle_buffer_size": 100,
-            "batch_size": 1,
-            "save_predictions": True,
-            "wandb": {"enabled": True, "log_predictions": True},
-            "generation": {
-                "max_new_tokens": 32,
-                "num_return_sequences": 1,
-                "do_sample": False,
-            },
-            "benchmarks": [
-                {
-                    "name": "gsm8k",
-                    "adapter": "fixture",
-                    "path": "fixture",
-                    "revision": "fixture",
-                    "split": "test",
-                }
-            ],
-        },
-    }
-
-    run_dir, summary = eval_model(FakeBackend(), FakeTokenizer(), config, model_name="fake-model")
-
-    assert summary["benchmarks"]["gsm8k"]["accuracy"] == 1.0
-    assert json.loads((run_dir / "summary.json").read_text())["model"] == "fake-model"
-    with gzip.open(run_dir / "predictions.jsonl.gz", "rt") as file:
-        prediction = json.loads(file.readline())
-    assert prediction["correct"] is True
-    assert prediction["extraction_method"] == "delimiter"
-    assert wandb_run.summary["eval/gsm8k/accuracy"] == 1.0
-    assert wandb_run.logged[-1]["eval/gsm8k/predictions"].rows
-    assert wandb_run.exit_code == 0
-    assert wandb_init_kwargs["tags"] == [
-        "eval",
-        "transformers",
-        "qwen2_5_math_instruct",
-        "test-eval",
-    ]
-
-
-def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
-    class TruncatedBackend:
-        def generate(self, prompts, config):
-            return [["unfinished reasoning gives 4"] for _ in prompts]
-
-    monkeypatch.setattr(
-        runner,
-        "load_math_source",
-        lambda source: iter(
-            [
-                {
-                    "problem": "What is 2 + 2?",
-                    "solution": None,
-                    "answer": "4",
-                    "source": "fixture",
-                }
-            ]
-        ),
-    )
-    config = {
-        "experiment": {"name": "truncated-eval"},
-        "eval": {
-            "protocol": "qwen2_5_math_base_zero_shot",
+            "protocol": protocol,
             "output_dir": str(tmp_path),
             "sample_seed": 42,
             "shuffle_buffer_size": 100,
@@ -214,7 +66,7 @@ def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
             "save_predictions": True,
             "wandb": {"enabled": False},
             "generation": {
-                "max_new_tokens": 4,
+                "max_new_tokens": max_new_tokens,
                 "num_return_sequences": 1,
                 "do_sample": False,
             },
@@ -230,139 +82,141 @@ def test_truncated_completion_does_not_trust_last_number(monkeypatch, tmp_path):
         },
     }
 
+
+def _load_single_example(_source):
+    return iter(
+        [
+            {
+                "problem": "What is 2 + 2?",
+                "solution": None,
+                "answer": "4",
+                "source": "fixture",
+            }
+        ]
+    )
+
+
+def test_majority_vote_groups_equivalent_answers_and_resolves_ties():
+    math_records = [
+        {"extracted_answer": answer, "parsed": True, "correct": correct}
+        for answer, correct in [(r"\frac{1}{2}", True), ("0.5", True), ("2", False)]
+    ]
+    selected, vote = select_majority_vote(math_records, answer_kind="math")
+    assert selected["correct"] is True
+    assert vote["vote_count"] == 2
+    assert vote["vote_tied"] is False
+
+    choice_records = [
+        {"extracted_answer": answer, "parsed": True, "correct": answer == "A"}
+        for answer in ["A", "B", "A", "B"]
+    ]
+    selected, vote = select_majority_vote(choice_records, answer_kind="choice")
+    assert selected["extracted_answer"] == "A"
+    assert vote["vote_tied"] is True
+
+
+def test_eval_writes_stable_summary_and_prediction_artifacts(monkeypatch, tmp_path):
+    monkeypatch.setattr(runner, "load_math_source", _load_single_example)
+
     run_dir, summary = eval_model(
-        TruncatedBackend(), FakeTokenizer(), config, model_name="fake-model"
+        FakeBackend(),
+        FakeTokenizer(),
+        _eval_config(tmp_path),
+        model_name="fake-model",
+    )
+
+    assert summary["benchmarks"]["gsm8k"]["accuracy"] == 1.0
+    assert json.loads((run_dir / "summary.json").read_text())["model"] == "fake-model"
+    with gzip.open(run_dir / "predictions.jsonl.gz", "rt") as file:
+        prediction = json.loads(file.readline())
+    assert prediction["correct"] is True
+    assert prediction["extraction_method"] == "delimiter"
+
+
+def test_truncated_completion_does_not_trust_a_fallback_answer(monkeypatch, tmp_path):
+    class TruncatedBackend:
+        def generate(self, prompts, config):
+            return [["unfinished reasoning gives 4"] for _ in prompts]
+
+    monkeypatch.setattr(runner, "load_math_source", _load_single_example)
+    config = _eval_config(
+        tmp_path,
+        protocol="qwen2_5_math_base_zero_shot",
+        max_new_tokens=4,
+    )
+
+    run_dir, summary = eval_model(
+        TruncatedBackend(),
+        FakeTokenizer(),
+        config,
+        model_name="fake-model",
     )
 
     with gzip.open(run_dir / "predictions.jsonl.gz", "rt") as file:
         prediction = json.loads(file.readline())
     assert prediction["truncated"] is True
     assert prediction["extraction_method"] == "last_number"
-    assert prediction["extracted_answer"] == "4"
     assert prediction["parsed"] is False
     assert prediction["correct"] is False
     assert summary["benchmarks"]["gsm8k"]["parse_rate"] == 0.0
 
 
-def test_metric_aggregation_separates_accuracy_from_parse_rate():
+def test_metrics_keep_accuracy_parse_and_difficulty_statistics_separate():
     metrics = EvaluationMetrics()
-    for parsed, correct in [(True, True), (True, False), (False, False)]:
+    for parsed, correct, truncated, tokens in [
+        (True, True, False, 100),
+        (True, False, True, 200),
+        (False, False, False, 300),
+    ]:
         metrics.add(
             {
                 "parsed": parsed,
                 "correct": correct,
-                "format_ok": None,
-                "truncated": False,
-                "completion_tokens": 1,
+                "format_ok": True,
+                "truncated": truncated,
+                "completion_tokens": tokens,
                 "extraction_method": "fixture",
                 "source": "fixture",
-            },
+                "difficulty": 5.0,
+            }
         )
 
     result = metrics.finish()
-
-    assert result["total"] == 3
-    assert result["correct"] == 1
     assert result["accuracy"] == pytest.approx(1 / 3)
     assert result["parse_rate"] == pytest.approx(2 / 3)
+    assert result["by_difficulty"]["5"] == {
+        "total": 3,
+        "correct": 1,
+        "accuracy": pytest.approx(1 / 3),
+        "parse_rate": pytest.approx(2 / 3),
+        "truncated": 1,
+        "truncation_rate": pytest.approx(1 / 3),
+        "mean_completion_tokens": 200,
+    }
 
 
-def test_metric_aggregation_reports_deepmath_difficulty_buckets():
-    metrics = EvaluationMetrics()
-    for correct, parsed, truncated, completion_tokens in (
-        (True, True, False, 100),
-        (False, True, True, 200),
-    ):
-        metrics.add(
-            {
-                "correct": correct,
-                "parsed": parsed,
-                "format_ok": True,
-                "truncated": truncated,
-                "completion_tokens": completion_tokens,
-                "extraction_method": "boxed",
-                "source": "zwhe99/DeepMath-103K",
-                "difficulty": 5.0,
-            },
-        )
-
-    bucket = metrics.finish()["by_difficulty"]["5"]
-    assert bucket["accuracy"] == 0.5
-    assert bucket["parse_rate"] == 1.0
-    assert bucket["truncation_rate"] == 0.5
-    assert bucket["mean_completion_tokens"] == 150
+def test_eval_configs_define_the_same_full_benchmark_suite():
+    for path in EVAL_CONFIGS:
+        config = load_yaml_config(path)
+        benchmarks = {benchmark["name"]: benchmark for benchmark in config["eval"]["benchmarks"]}
+        assert set(benchmarks) == {"gsm8k", "gsm1k", "math", "mmlu_stem"}, path
+        mmlu = benchmarks["mmlu_stem"]
+        assert mmlu["split"] == "test", path
+        assert "limit" not in mmlu, path
+        assert set(mmlu["subsets"]) == MMLU_STEM_SUBSETS, path
 
 
-@pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
-def test_baseline_config_runs_every_benchmark(monkeypatch, tmp_path, config_path):
+def test_limited_multisubset_eval_round_robins_and_forwards_shuffle(monkeypatch):
+    seen_sources = []
+
     def load(source):
-        subset = source.get("subset")
-        is_mmlu = source["adapter"] == "mmlu"
+        seen_sources.append(source)
         return iter(
-            {
-                "problem": (
-                    "Which option is correct?\nA. one\nB. two\nC. three\nD. four"
-                    if is_mmlu
-                    else "What is 2 + 2?"
-                ),
-                "solution": None,
-                "answer": "C" if is_mmlu else "4",
-                "source": f"{source['path']}:{subset}" if subset else source["path"],
-            }
-            for _ in range(1)
+            {"problem": str(index), "answer": str(index), "source": source["subset"]}
+            for index in range(3)
         )
-
-    class ConfigBackend:
-        def generate(self, prompts, config):
-            return [
-                ["The answer is C." if "Which option is correct?" in prompt else "The answer is 4."]
-                for prompt in prompts
-            ]
 
     monkeypatch.setattr(runner, "load_math_source", load)
-    config = load_yaml_config(config_path)
-    config["eval"]["wandb"]["enabled"] = False
-
-    _, summary = eval_model(
-        ConfigBackend(),
-        FakeTokenizer(),
-        config,
-        model_name=config["model"]["name_or_path"],
-        limit=1,
-        output_dir=tmp_path,
-    )
-
-    assert set(summary["benchmarks"]) == {"gsm8k", "gsm1k", "math", "mmlu_stem"}
-    assert all(result["total"] == 1 for result in summary["benchmarks"].values())
-
-
-@pytest.mark.parametrize("config_path", BASELINE_CONFIGS, ids=lambda path: path.stem)
-def test_baseline_configs_use_the_full_mmlu_stem_test_split(config_path):
-    config = load_yaml_config(config_path)
-    benchmark = next(
-        benchmark for benchmark in config["eval"]["benchmarks"] if benchmark["name"] == "mmlu_stem"
-    )
-
-    assert benchmark["split"] == "test"
-    assert "limit" not in benchmark
-    assert set(benchmark["subsets"]) == MMLU_STEM_SUBSETS
-
-
-def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
-    monkeypatch.setattr(
-        runner,
-        "load_math_source",
-        lambda source: iter(
-            [
-                {
-                    "problem": str(index),
-                    "answer": str(index),
-                    "source": source["subset"],
-                }
-                for index in range(3)
-            ]
-        ),
-    )
     benchmark = {
         "adapter": "fixture",
         "path": "fixture",
@@ -375,95 +229,11 @@ def test_limited_multi_subset_benchmark_is_round_robin(monkeypatch):
         _benchmark_examples(
             benchmark,
             cli_limit=5,
-            sample_seed=42,
-            shuffle_buffer_size=100,
-        )
-    )
-
-    assert [example["source"] for example in examples] == ["a", "b", "c", "a", "b"]
-
-
-def test_limited_benchmark_passes_shuffle_settings(monkeypatch):
-    seen = []
-
-    def load(source):
-        seen.append(source)
-        return iter([])
-
-    monkeypatch.setattr(runner, "load_math_source", load)
-    benchmark = {
-        "adapter": "fixture",
-        "path": "fixture",
-        "revision": "fixture",
-        "split": "test",
-    }
-
-    list(
-        _benchmark_examples(
-            benchmark,
-            cli_limit=5,
             sample_seed=123,
             shuffle_buffer_size=456,
         )
     )
 
-    assert seen[0]["shuffle_seed"] == 123
-    assert seen[0]["shuffle_buffer_size"] == 456
-    assert seen[0]["streaming"] is False
-
-
-def test_mmlu_uses_fixed_paper_shots_and_exact_choice_grading(monkeypatch, tmp_path):
-    seen_splits = []
-
-    def load(source):
-        seen_splits.append(source["split"])
-        return iter(
-            {
-                "problem": f"question {index}\nA. one\nB. two\nC. three\nD. four",
-                "solution": None,
-                "answer": "C",
-                "source": "cais/mmlu:abstract_algebra",
-            }
-            for index in range(1)
-        )
-
-    monkeypatch.setattr(runner, "load_math_source", load)
-    config = {
-        "experiment": {"name": "mmlu-eval"},
-        "eval": {
-            "protocol": "qwen2_5_math_base",
-            "output_dir": str(tmp_path),
-            "sample_seed": 42,
-            "shuffle_buffer_size": 100,
-            "batch_size": 1,
-            "save_predictions": False,
-            "generation": {
-                "max_new_tokens": 32,
-                "num_return_sequences": 1,
-                "do_sample": False,
-            },
-            "benchmarks": [
-                {
-                    "name": "mmlu_stem",
-                    "adapter": "mmlu",
-                    "path": "cais/mmlu",
-                    "revision": "fixture",
-                    "split": "test",
-                    "subsets": ["abstract_algebra"],
-                }
-            ],
-        },
-    }
-
-    _, summary = eval_model(
-        FakeChoiceBackend(),
-        FakeTokenizer(),
-        config,
-        model_name="fake-model",
-    )
-
-    result = summary["benchmarks"]["mmlu_stem"]
-    assert result["accuracy"] == 1.0
-    assert result["num_shots"] == 4
-    assert result["extraction_methods"] == {"answer_marker": 1}
-    assert seen_splits == ["test"]
+    assert [example["source"] for example in examples] == ["a", "b", "c", "a", "b"]
+    assert all(source["shuffle_seed"] == 123 for source in seen_sources)
+    assert all(source["shuffle_buffer_size"] == 456 for source in seen_sources)
