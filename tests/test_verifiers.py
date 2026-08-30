@@ -41,6 +41,8 @@ def test_math_verifier_parses_extracted_latex(reference, prediction):
 def test_math_verifier_compares_text_choice_lists():
     assert check_answer(r"\text{C,E}", "C, E") == (True, True)
     assert check_answer(r"\text{C,E}", r"\text{A,C,D,E}") == (True, False)
+    assert check_answer("A", "A") == (True, True)
+    assert check_answer("A", r"\text{B}") == (True, False)
 
 
 def test_unparseable_text_is_not_silently_accepted():

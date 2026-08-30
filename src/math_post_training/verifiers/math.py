@@ -11,7 +11,9 @@ def check_answer(reference, prediction):
         prediction_boolean = _boolean_answer(prediction)
         return prediction_boolean is not None, prediction_boolean == reference_boolean
 
-    reference_choices = _text_choices(reference)
+    # DeepMath contains multiple-choice examples whose references are stored as
+    # plain letters (for example, ``A``) rather than ``\text{A}``.
+    reference_choices = _text_choices(reference, allow_plain=True)
     if reference_choices is not None:
         prediction_choices = _text_choices(prediction, allow_plain=True)
         return prediction_choices is not None, prediction_choices == reference_choices
