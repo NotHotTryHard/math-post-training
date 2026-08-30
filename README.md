@@ -245,3 +245,37 @@ The same image runs locally or on RunPod with the repository configs and an `.en
 commands for evaluation, training, checkpoint resume, and SC@8 are kept in
 [`docs/reproducibility.md`](docs/reproducibility.md) rather than duplicated here. Hugging Face
 checkpoints are private and require account access.
+
+## Scope and limitations
+
+- This is a single-seed, single-model-scale study.
+- Self-consistency costs eight generations per problem and should not be compared with greedy
+  decoding.
+- I did my best to make this setup (prompt, split, decoding, verifier) as close to published in Qwen Math paper, but even then some compromises were made.
+
+## Research and tooling
+
+The project author set the research direction, designed the experiments and ablations, selected
+the models, interpreted the results, and handled RunPod orchestration and part of the diagnostics.
+[codex-cli](https://github.com/openai/codex) supported implementation, test writing, and
+documentation. It accelerated the engineering loop without making the research decisions or
+drawing the conclusions.
+
+## References and related work
+
+- [Qwen2.5-Math Technical Report](https://arxiv.org/abs/2409.12122) — Qwen's SFT, reward-model,
+  GRPO, and inference-scaling pipeline.
+- [DeepSeekMath](https://arxiv.org/abs/2402.03300) — introduces GRPO for mathematical reasoning.
+- [DAPO](https://arxiv.org/abs/2503.14476) — decoupled clipping, dynamic sampling, token-level loss,
+  and overlong-reward shaping at scale.
+- [OpenMathInstruct-2](https://huggingface.co/datasets/nvidia/OpenMathInstruct-2) — the SFT source.
+- [DeepMath-103K](https://huggingface.co/datasets/zwhe99/DeepMath-103K) — the broader mathematics
+  dataset evaluated in the mixed RL experiment.
+- [Hugging Face TRL SFTTrainer](https://huggingface.co/docs/trl/sft_trainer) — the supervised
+  fine-tuning interface and dataset-format reference.
+- [TRL GRPOTrainer](https://huggingface.co/docs/trl/index) and [vLLM](https://vllm.ai/) — the training
+  and generation stack used here.
+- [DrEternity/gsm8k-post-training](https://github.com/DrEternity/gsm8k-post-training) — an adjacent
+  open GSM8K SFT/GRPO project and a useful point of comparison for experiment structure.
+- [codex-cli](https://github.com/openai/codex) — the terminal engineering assistant used
+  during development.
