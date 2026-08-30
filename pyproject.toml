@@ -17,6 +17,7 @@ model-generate = "math_post_training.cli:generate_main"
 model-eval = "math_post_training.cli:eval_main"
 model-eval-checkpoints = "math_post_training.checkpoint_eval:main"
 model-grpo = "math_post_training.cli:grpo_main"
+model-grpo-eval-loop = "math_post_training.grpo_eval_loop:main"
 model-rollout = "math_post_training.rollouts:main"
 model-sft = "math_post_training.cli:sft_main"
 

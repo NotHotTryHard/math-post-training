@@ -49,9 +49,10 @@ def test_grpo_command_starts_training_and_prints_output(monkeypatch, capsys, tmp
 
     monkeypatch.setattr(cli, "load_yaml_config", lambda path: config)
 
-    def train(config_arg, *, resume_from_checkpoint):
+    def train(config_arg, *, resume_from_checkpoint, stop_after_step):
         call["config"] = config_arg
         call["resume"] = resume_from_checkpoint
+        call["stop_after_step"] = stop_after_step
         return output_dir
 
     monkeypatch.setitem(
@@ -71,5 +72,5 @@ def test_grpo_command_starts_training_and_prints_output(monkeypatch, capsys, tmp
         )
         == 0
     )
-    assert call == {"config": config, "resume": checkpoint}
+    assert call == {"config": config, "resume": checkpoint, "stop_after_step": None}
     assert capsys.readouterr().out == f"Model: {output_dir}\n"

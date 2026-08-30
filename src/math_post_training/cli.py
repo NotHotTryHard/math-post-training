@@ -164,6 +164,7 @@ def _grpo_parser():
     parser = argparse.ArgumentParser(description="Train a model with verifiable GRPO rewards")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--resume-from-checkpoint", type=Path)
+    parser.add_argument("--stop-after-step", type=int)
     return parser
 
 
@@ -176,6 +177,7 @@ def grpo_main(argv=None):
     output_dir = train_grpo(
         config,
         resume_from_checkpoint=args.resume_from_checkpoint,
+        stop_after_step=args.stop_after_step,
     )
     print(f"Model: {output_dir}")
     return 0

@@ -113,7 +113,11 @@ def test_train_grpo_wires_the_training_contract(monkeypatch, tmp_path):
         ),
     )
 
-    result = grpo.train_grpo(config, resume_from_checkpoint=tmp_path / "checkpoint-1")
+    result = grpo.train_grpo(
+        config,
+        resume_from_checkpoint=tmp_path / "checkpoint-1",
+        stop_after_step=2,
+    )
 
     trainer = FakeTrainer.instance
     assert result == output_dir
@@ -126,6 +130,8 @@ def test_train_grpo_wires_the_training_contract(monkeypatch, tmp_path):
     }
     assert trainer.kwargs["eval_dataset"].rows[0]["answer"] == "4"
     assert trainer.kwargs["peft_config"].values == {"r": 32, "lora_alpha": 64}
+    assert len(trainer.kwargs["callbacks"]) == 1
+    assert trainer.kwargs["callbacks"][0].target_step == 2
     training_args = trainer.kwargs["args"].values
     assert training_args["output_dir"] == str(output_dir)
     assert training_args["max_steps"] == 2

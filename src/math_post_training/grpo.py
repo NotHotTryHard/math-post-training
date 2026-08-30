@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from peft import LoraConfig, PeftModel
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, TrainerCallback
 from trl import GRPOConfig, GRPOTrainer
 
 from math_post_training.artifacts import save_policy_artifacts
@@ -23,7 +23,22 @@ REWARD_PROFILES = {
 }
 
 
-def train_grpo(config, *, resume_from_checkpoint=None):
+class StopAfterStepCallback(TrainerCallback):
+    """Stop cleanly after saving a requested optimizer step."""
+
+    def __init__(self, target_step):
+        if target_step < 1:
+            raise ValueError("target_step must be positive")
+        self.target_step = target_step
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step >= self.target_step:
+            control.should_save = True
+            control.should_training_stop = True
+        return control
+
+
+def train_grpo(config, *, resume_from_checkpoint=None, stop_after_step=None):
     """Train a LoRA policy with online generations and verifiable rewards."""
 
     model_config = config["model"]
@@ -60,6 +75,12 @@ def train_grpo(config, *, resume_from_checkpoint=None):
     else:
         policy = _merge_adapter(model_name, adapter_name, model_init_kwargs)
 
+    callbacks = None
+    if stop_after_step is not None:
+        if stop_after_step > training_config["max_steps"]:
+            raise ValueError("stop_after_step cannot exceed grpo.max_steps")
+        callbacks = [StopAfterStepCallback(stop_after_step)]
+
     trainer = GRPOTrainer(
         model=policy,
         reward_funcs=reward_funcs,
@@ -68,6 +89,7 @@ def train_grpo(config, *, resume_from_checkpoint=None):
         eval_dataset=eval_dataset,
         processing_class=tokenizer,
         peft_config=LoraConfig(**config["lora"]),
+        callbacks=callbacks,
     )
     trainer.train(
         resume_from_checkpoint=(
