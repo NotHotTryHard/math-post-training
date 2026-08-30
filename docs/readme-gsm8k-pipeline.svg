@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">GSM8K accuracy across the Qwen2.5-1.5B post-training pipeline</title>
+  <desc id="desc">Bar chart showing Base 64.14, native-EOS SFT 75.66, strict DAPO 77.26, KL-DAPO 79.38, and self-consistency at 8 85.29 percent. The Qwen2.5-Math-1.5B-Instruct greedy reference is 84.8 percent.</desc>
+  <style>
+    .title{font:600 25px Georgia,'Times New Roman',serif;fill:#111827}.subtitle{font:14px Georgia,'Times New Roman',serif;fill:#4b5563}
+    .tick{font:14px Georgia,'Times New Roman',serif;fill:#374151}.label{font:15px Georgia,'Times New Roman',serif;fill:#111827}
+    .value{font:600 16px Georgia,'Times New Roman',serif;fill:#111827}.axis-label{font:16px Georgia,'Times New Roman',serif;fill:#111827}
+    .reference{font:14px Georgia,'Times New Roman',serif;fill:#7e57c2}.grid{stroke:#e5e7eb;stroke-width:1}.axis{stroke:#111827;stroke-width:1.25}
+  </style>
+  <rect width="1200" height="650" fill="#ffffff"/>
+  <text x="600" y="38" text-anchor="middle" class="title">From Base to DAPO — GSM8K accuracy</text>
+  <text x="600" y="62" text-anchor="middle" class="subtitle">Greedy decoding for Base through KL-DAPO; the final checkpoint uses self-consistency@8</text>
+
+  <g>
+    <line x1="100" y1="530" x2="1150" y2="530" class="grid"/><text x="88" y="535" text-anchor="end" class="tick">55%</text>
+    <line x1="100" y1="468" x2="1150" y2="468" class="grid"/><text x="88" y="473" text-anchor="end" class="tick">60%</text>
+    <line x1="100" y1="406" x2="1150" y2="406" class="grid"/><text x="88" y="411" text-anchor="end" class="tick">65%</text>
+    <line x1="100" y1="344" x2="1150" y2="344" class="grid"/><text x="88" y="349" text-anchor="end" class="tick">70%</text>
+    <line x1="100" y1="281" x2="1150" y2="281" class="grid"/><text x="88" y="286" text-anchor="end" class="tick">75%</text>
+    <line x1="100" y1="219" x2="1150" y2="219" class="grid"/><text x="88" y="224" text-anchor="end" class="tick">80%</text>
+    <line x1="100" y1="157" x2="1150" y2="157" class="grid"/><text x="88" y="162" text-anchor="end" class="tick">85%</text>
+    <line x1="100" y1="95" x2="1150" y2="95" class="grid"/><text x="88" y="100" text-anchor="end" class="tick">90%</text>
+    <line x1="100" y1="82" x2="100" y2="530" class="axis"/><line x1="100" y1="530" x2="1150" y2="530" class="axis"/>
+    <text x="31" y="306" text-anchor="middle" transform="rotate(-90 31 306)" class="axis-label">GSM8K accuracy</text>
+  </g>
+
+  <line x1="100" y1="159" x2="1150" y2="159" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="8 6"/>
+  <rect x="112" y="136" width="410" height="24" fill="#fff" opacity="0.96"/>
+  <text x="118" y="153" class="reference">Qwen2.5-Math-1.5B-Instruct greedy reference — 84.8%</text>
+
+  <g>
+    <rect x="145" y="416" width="140" height="114" fill="#b8bbc2"/><text x="215" y="405" text-anchor="middle" class="value">64.14%</text>
+    <rect x="350" y="273" width="140" height="257" fill="#a79fb9"/><text x="420" y="262" text-anchor="middle" class="value">75.66%</text>
+    <rect x="555" y="253" width="140" height="277" fill="#967fc2"/><text x="625" y="242" text-anchor="middle" class="value">77.26%</text>
+    <rect x="760" y="227" width="140" height="303" fill="#7957d5"/><text x="830" y="216" text-anchor="middle" class="value">79.38%</text>
+    <rect x="965" y="153" width="140" height="377" fill="#a020f0"/><text x="1035" y="180" text-anchor="middle" class="value" style="fill:#ffffff">85.29%</text>
+  </g>
+
+  <g class="label" text-anchor="middle">
+    <text x="215" y="559"><tspan x="215">Qwen2.5-1.5B</tspan><tspan x="215" dy="19">Base</tspan></text>
+    <text x="420" y="559"><tspan x="420">Native-EOS</tspan><tspan x="420" dy="19">SFT</tspan></text>
+    <text x="625" y="559"><tspan x="625">Strict filtered</tspan><tspan x="625" dy="19">DAPO</tspan></text>
+    <text x="830" y="559"><tspan x="830">Full-GSM8K</tspan><tspan x="830" dy="19">KL-DAPO</tspan></text>
+    <text x="1035" y="559"><tspan x="1035">Full-GSM8K</tspan><tspan x="1035" dy="19">SC@8</tspan></text>
+  </g>
+</svg>

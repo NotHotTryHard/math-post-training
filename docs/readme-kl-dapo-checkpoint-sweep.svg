@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Greedy validation during full-GSM8K KL-DAPO training</title>
+  <desc id="desc">Two side-by-side line charts with independent scales. GSM8K rises from 75.66 to a peak of 79.38 at checkpoint 2500. MATH rises from 45.64 to a peak of 50.10 at checkpoint 2500.</desc>
+  <style>
+    .title{font:600 25px Georgia,'Times New Roman',serif;fill:#111827}.subtitle{font:14px Georgia,'Times New Roman',serif;fill:#4b5563}
+    .panel-title{font:600 19px Georgia,'Times New Roman',serif;fill:#111827}.tick{font:13px Georgia,'Times New Roman',serif;fill:#374151}
+    .axis-label{font:15px Georgia,'Times New Roman',serif;fill:#111827}.value{font:600 14px Georgia,'Times New Roman',serif}.note{font:italic 13px Georgia,'Times New Roman',serif;fill:#6b7280}
+    .grid{stroke:#e5e7eb;stroke-width:1}.axis{stroke:#111827;stroke-width:1.2}.best{stroke:#9ca3af;stroke-width:1.3;stroke-dasharray:5 5}
+  </style>
+  <rect width="1200" height="620" fill="#ffffff"/>
+  <text x="600" y="36" text-anchor="middle" class="title">Greedy validation during full-GSM8K KL-DAPO</text>
+  <text x="600" y="59" text-anchor="middle" class="subtitle">Independent Y-scales expose the checkpoint trajectory on each benchmark</text>
+
+  <text x="322" y="94" text-anchor="middle" class="panel-title">GSM8K</text>
+  <text x="878" y="94" text-anchor="middle" class="panel-title">MATH</text>
+
+  <!-- GSM8K panel: 75-80% -->
+  <g>
+    <line x1="78" y1="480" x2="566" y2="480" class="grid"/><text x="68" y="485" text-anchor="end" class="tick">75%</text>
+    <line x1="78" y1="406" x2="566" y2="406" class="grid"/><text x="68" y="411" text-anchor="end" class="tick">76%</text>
+    <line x1="78" y1="332" x2="566" y2="332" class="grid"/><text x="68" y="337" text-anchor="end" class="tick">77%</text>
+    <line x1="78" y1="258" x2="566" y2="258" class="grid"/><text x="68" y="263" text-anchor="end" class="tick">78%</text>
+    <line x1="78" y1="184" x2="566" y2="184" class="grid"/><text x="68" y="189" text-anchor="end" class="tick">79%</text>
+    <line x1="78" y1="110" x2="566" y2="110" class="grid"/><text x="68" y="115" text-anchor="end" class="tick">80%</text>
+    <line x1="78" y1="110" x2="78" y2="480" class="axis"/><line x1="78" y1="480" x2="566" y2="480" class="axis"/>
+    <text x="24" y="295" text-anchor="middle" transform="rotate(-90 24 295)" class="axis-label">Accuracy</text>
+    <line x1="427" y1="110" x2="427" y2="480" class="best"/>
+    <polyline points="78,431 148,414 218,257 288,273 358,251 427,156 497,184 566,195" fill="none" stroke="#6d4aff" stroke-width="3"/>
+    <g fill="#6d4aff">
+      <circle cx="78" cy="431" r="4"/><circle cx="148" cy="414" r="4"/><circle cx="218" cy="257" r="4"/><circle cx="288" cy="273" r="4"/>
+      <circle cx="358" cy="251" r="4"/><circle cx="427" cy="156" r="5"/><circle cx="497" cy="184" r="4"/><circle cx="566" cy="195" r="4"/>
+    </g>
+    <text x="439" y="146" class="value" fill="#6d4aff">79.38%</text>
+  </g>
+
+  <!-- MATH panel: 45-51% -->
+  <g>
+    <line x1="634" y1="480" x2="1122" y2="480" class="grid"/><text x="624" y="485" text-anchor="end" class="tick">45%</text>
+    <line x1="634" y1="418" x2="1122" y2="418" class="grid"/><text x="624" y="423" text-anchor="end" class="tick">46%</text>
+    <line x1="634" y1="357" x2="1122" y2="357" class="grid"/><text x="624" y="362" text-anchor="end" class="tick">47%</text>
+    <line x1="634" y1="295" x2="1122" y2="295" class="grid"/><text x="624" y="300" text-anchor="end" class="tick">48%</text>
+    <line x1="634" y1="233" x2="1122" y2="233" class="grid"/><text x="624" y="238" text-anchor="end" class="tick">49%</text>
+    <line x1="634" y1="172" x2="1122" y2="172" class="grid"/><text x="624" y="177" text-anchor="end" class="tick">50%</text>
+    <line x1="634" y1="110" x2="1122" y2="110" class="grid"/><text x="624" y="115" text-anchor="end" class="tick">51%</text>
+    <line x1="634" y1="110" x2="634" y2="480" class="axis"/><line x1="634" y1="480" x2="1122" y2="480" class="axis"/>
+    <text x="588" y="295" text-anchor="middle" transform="rotate(-90 588 295)" class="axis-label">Accuracy</text>
+    <line x1="983" y1="110" x2="983" y2="480" class="best"/>
+    <polyline points="634,441 704,332 774,302 844,245 914,217 983,166 1053,183 1122,179" fill="none" stroke="#c026d3" stroke-width="3"/>
+    <g fill="#c026d3">
+      <circle cx="634" cy="441" r="4"/><circle cx="704" cy="332" r="4"/><circle cx="774" cy="302" r="4"/><circle cx="844" cy="245" r="4"/>
+      <circle cx="914" cy="217" r="4"/><circle cx="983" cy="166" r="5"/><circle cx="1053" cy="183" r="4"/><circle cx="1122" cy="179" r="4"/>
+    </g>
+    <text x="995" y="156" class="value" fill="#c026d3">50.10%</text>
+  </g>
+
+  <g class="tick" text-anchor="middle">
+    <text x="78" y="505">SFT</text><text x="148" y="505">500</text><text x="218" y="505">1k</text><text x="288" y="505">1.5k</text>
+    <text x="358" y="505">2k</text><text x="427" y="505">2.5k</text><text x="497" y="505">3k</text><text x="566" y="505">3.5k</text>
+    <text x="634" y="505">SFT</text><text x="704" y="505">500</text><text x="774" y="505">1k</text><text x="844" y="505">1.5k</text>
+    <text x="914" y="505">2k</text><text x="983" y="505">2.5k</text><text x="1053" y="505">3k</text><text x="1122" y="505">3.5k</text>
+  </g>
+  <text x="322" y="545" text-anchor="middle" class="axis-label">Optimizer step</text>
+  <text x="878" y="545" text-anchor="middle" class="axis-label">Optimizer step</text>
+  <line x1="455" y1="572" x2="478" y2="572" class="best"/>
+  <text x="487" y="577" class="note">best joint greedy checkpoint - step 2500</text>
+</svg>
