@@ -139,3 +139,9 @@ expected checkpoint contains `adapter_model.safetensors`, `optimizer.pt`,
 `scheduler.pt`, `rng_state.pth` and `trainer_state.json`, and the artifact
 dataset contains 87 files (95,660,308 bytes). The disposable RunPod volume is
 not required to recover these experiments.
+
+## Later full-GSM8K KL follow-up
+
+The later unfiltered GSM8K experiment with `beta=1e-3`, checkpoint-level greedy
+validation and SC@8 evaluation is recorded in
+[`full-gsm8k-kl-dapo-2026-08-29.md`](full-gsm8k-kl-dapo-2026-08-29.md).

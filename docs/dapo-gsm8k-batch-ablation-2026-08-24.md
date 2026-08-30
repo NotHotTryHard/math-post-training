@@ -96,3 +96,9 @@ to mostly 80–100%, and the projected 2901-step runtime falls from about 19 hou
 
 GSM8K test использован только для ретроспективного сравнения. Выбирать промежуточный checkpoint
 по максимуму test accuracy нельзя: для model selection нужен отдельный holdout из train.
+
+## Follow-up: full GSM8K + KL
+
+Последующий эксперимент на полном GSM8K train с `beta=1e-3`, greedy checkpoint
+sweep и self-consistency@8 для checkpoint-2500/3000 описан в
+[`full-gsm8k-kl-dapo-2026-08-29.md`](full-gsm8k-kl-dapo-2026-08-29.md).
