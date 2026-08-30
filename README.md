@@ -246,6 +246,16 @@ commands for evaluation, training, checkpoint resume, and SC@8 are kept in
 [`docs/reproducibility.md`](docs/reproducibility.md) rather than duplicated here. Hugging Face
 checkpoints are private and require account access.
 
+## Compute budget
+
+| | Clean final pipeline (active) | Full study + ablations (billed) |
+| --- | ---: | ---: |
+| Evaluation | ~30 min | ~16.0 h |
+| SFT training | ~7.5 h | ~45.0 h |
+| Data filtering and dataset audits | — | ~11.0 h |
+| RL training | ~6.9 h | ~52.4 h |
+| **Total GPU time** | **~14.9 h** | **~124.4 h** |
+
 ## Scope and limitations
 
 - This is a single-seed, single-model-scale study.
