@@ -190,3 +190,58 @@ microbatch splits:
 The selected setup kept the training and colocated vLLM copies resident, reached mostly 80–100%
 GPU utilization, and reduced a projected ~19-hour strict run to roughly 5.4 hours. The effective
 batch, number of rollouts, reward, and number of optimizer updates were unchanged.
+
+## Final recipe
+
+| Component | Choice |
+| --- | --- |
+| Starting policy | native-EOS SFT from Qwen2.5-1.5B Base |
+| SFT data | 296K OpenMathInstruct-2 examples, one epoch |
+| SFT LoRA | `r32/a64`, dropout `0.05`, all linear layers |
+| RL data | full, unfiltered GSM8K train |
+| Reward | strict boxed correctness: `+1 / 0 / -0.5` |
+| Algorithm | DAPO loss, clip `0.2/0.28`, group-scaled reward, `beta=1e-3` |
+| Sampling | 16 rollouts/prompt, `temperature=0.8`, `top_p=0.95` |
+| Optimization | LoRA `r32/a64`, LR `1e-5` cosine, 400-step warmup |
+| Batch | 64 completions/update as microbatch `8 × 8` accumulation |
+| Runtime | colocated vLLM, sleep disabled, one A100 80 GB |
+| Model selection | full four-benchmark greedy eval every 500 steps |
+
+For inference, use **checkpoint 3000**.
+
+## Reproduce it
+
+The repository is designed so that a result is more than a table in a README - everything is set up to be easily resumable from the checkpoints and with no pain in fighting dependencies, just take the [GHCR image](https://github.com/NotHotTryHard/math-post-training/pkgs/container/math-post-training).
+
+```bash
+git clone https://github.com/NotHotTryHard/math-post-training.git
+cd math-post-training
+cp .env.example .env
+
+docker build -t math-post-training .
+docker run --gpus all --ipc=host --env-file .env -it math-post-training bash
+```
+
+Inside the container:
+
+```bash
+# Re-evaluate the final native-EOS SFT checkpoint.
+model-eval \
+  --config configs/eval/qwen2_5_1_5b_openmath_native_eos_greedy.yaml
+
+# Run the full-GSM8K KL-DAPO train/eval loop.
+model-grpo-eval-loop \
+  --config configs/grpo/qwen2_5_1_5b_openmath_gsm8k_full_dapo_strict_kl1e3_long.yaml
+```
+
+| Resource | Link |
+| --- | --- |
+| Native-EOS SFT starting checkpoint | [Hugging Face](https://huggingface.co/NotHotTryHard/qwen2.5-1.5b-base-openmath-296k-1epoch-lora-cosine-native-eos-merged) |
+| KL-DAPO checkpoint 2500, best greedy GSM8K + MATH | [Hugging Face](https://huggingface.co/NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-full-dapo-strict-kl1e3-long/tree/main/checkpoint-2500) |
+| KL-DAPO checkpoint 3000, best SC@8 | [Hugging Face](https://huggingface.co/NotHotTryHard/qwen2.5-1.5b-openmath-native-eos-gsm8k-full-dapo-strict-kl1e3-long/tree/main/checkpoint-3000) |
+| Ready-to-run CUDA environment | [GHCR image](https://github.com/NotHotTryHard/math-post-training/pkgs/container/math-post-training) |
+
+The same image runs locally or on RunPod with the repository configs and an `.env` file. Exact
+commands for evaluation, training, checkpoint resume, and SC@8 are kept in
+[`docs/reproducibility.md`](docs/reproducibility.md) rather than duplicated here. Hugging Face
+checkpoints are private and require account access.
