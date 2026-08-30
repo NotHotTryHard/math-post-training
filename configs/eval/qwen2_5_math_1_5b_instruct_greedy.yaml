@@ -1,0 +1,86 @@
+experiment:
+  name: qwen2.5-math-1.5b-instruct-greedy
+
+model:
+  name_or_path: Qwen/Qwen2.5-Math-1.5B-Instruct
+  dtype: auto
+  trust_remote_code: false
+
+vllm:
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.9
+  max_model_len: 4096
+  enable_prefix_caching: true
+
+eval:
+  backend: vllm
+  protocol: qwen2_5_math_instruct
+  output_dir: outputs/eval/qwen2.5-math-1.5b-instruct-greedy
+  sample_seed: 42
+  shuffle_buffer_size: 10_000
+  batch_size: 768
+  save_predictions: true
+  wandb:
+    enabled: true
+    log_predictions: true
+  generation:
+    max_new_tokens: 2048
+    num_return_sequences: 1
+    do_sample: false
+    temperature: 0.0
+    top_p: 1.0
+    seed: 42
+  benchmarks:
+    - name: gsm8k
+      adapter: gsm8k
+      path: openai/gsm8k
+      subset: main
+      revision: 740312add88f781978c0658806c59bc2815b9866
+      split: test
+
+    - name: gsm1k
+      adapter: gsm1k
+      path: ScaleAI/gsm1k
+      subset: null
+      revision: bc09569d09a614b9b530edc7f076fb214ac10493
+      split: test
+
+    - name: math
+      adapter: hendrycks_math
+      path: EleutherAI/hendrycks_math
+      revision: 21a5633873b6a120296cce3e2df9d5550074f4a3
+      split: test
+      subsets:
+        - algebra
+        - counting_and_probability
+        - geometry
+        - intermediate_algebra
+        - number_theory
+        - prealgebra
+        - precalculus
+
+    - name: mmlu_stem
+      adapter: mmlu
+      path: cais/mmlu
+      revision: c30699e8356da336a370243923dbaf21066bb9fe
+      split: test
+      subsets:
+        - abstract_algebra
+        - anatomy
+        - astronomy
+        - college_biology
+        - college_chemistry
+        - college_computer_science
+        - college_mathematics
+        - college_physics
+        - computer_security
+        - conceptual_physics
+        - electrical_engineering
+        - elementary_mathematics
+        - high_school_biology
+        - high_school_chemistry
+        - high_school_computer_science
+        - high_school_mathematics
+        - high_school_physics
+        - high_school_statistics
+        - machine_learning
